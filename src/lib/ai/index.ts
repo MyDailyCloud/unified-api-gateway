@@ -98,5 +98,24 @@ export {
   type PricingInfo,
 } from './cost-tracker';
 
+// 诊断工具
+export {
+  AIDiagnostics,
+  createDiagnostics,
+  formatDiagnosticsReport,
+  type ConnectionTestResult,
+  type DiagnosticsReport,
+  type HealthCheckOptions,
+} from './diagnostics';
+
+// 增强客户端
+export {
+  EnhancedAIClient,
+  getEnhancedAIClient,
+  setEnhancedAIClient,
+  createEnhancedAIClient,
+  type EnhancedAIClientConfig,
+} from './enhanced-client';
+
 // Electron 集成
 export * from './electron';

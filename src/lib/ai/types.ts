@@ -153,6 +153,10 @@ export type AIProvider =
   | 'moonshot'
   | 'qwen'
   | 'minimax'
+  | 'google'
+  | 'azure'
+  | 'mistral'
+  | 'cohere'
   | 'custom';
 
 export interface ProviderConfig {

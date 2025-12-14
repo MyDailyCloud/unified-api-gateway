@@ -103,24 +103,37 @@ Set these secrets for EV code signing:
         └── electron-build.yml  # CI/CD workflow
 ```
 
-## Scripts Reference
+## NPM Scripts
 
-Add these to your `package.json`:
+The following scripts should be available in `package.json`:
 
-```json
-{
-  "main": "electron/main.js",
-  "scripts": {
-    "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:8080 && electron .\"",
-    "electron:compile": "tsc -p electron/tsconfig.json",
-    "electron:build": "npm run build && npm run electron:compile && electron-builder",
-    "electron:build:mac": "npm run build && npm run electron:compile && electron-builder --mac",
-    "electron:build:win": "npm run build && npm run electron:compile && electron-builder --win",
-    "electron:build:linux": "npm run build && npm run electron:compile && electron-builder --linux",
-    "electron:build:all": "npm run build && npm run electron:compile && electron-builder -mwl"
-  }
-}
+| Script | Description |
+|--------|-------------|
+| `npm run electron:dev` | Start development with hot-reload |
+| `npm run electron:compile` | Compile Electron TypeScript |
+| `npm run electron:build` | Build for current platform |
+| `npm run electron:build:mac` | Build for macOS |
+| `npm run electron:build:win` | Build for Windows |
+| `npm run electron:build:linux` | Build for Linux |
+| `npm run electron:build:all` | Build for all platforms |
+| `npm run electron:pack` | Package without installer (for testing) |
+
+## Generating Icons
+
+Before building, generate the application icons:
+
+```bash
+# On macOS/Linux
+cd build
+chmod +x generate-icons.sh
+./generate-icons.sh
+
+# Or use npm package
+npm install -g electron-icon-builder
+electron-icon-builder --input=build/icon.svg --output=build/
 ```
+
+See `build/icons/README.md` for detailed instructions.
 
 ## Troubleshooting
 

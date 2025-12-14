@@ -155,3 +155,15 @@ export {
   type GatewayMiddleware,
   type EndpointConfig,
 } from './gateway';
+
+// Node.js 服务器
+export {
+  createServer,
+  startServer,
+  loadConfig,
+  validateConfig,
+  generateExampleConfig,
+  type ServerConfig,
+  type ProviderConfigEntry,
+  type ServerInstance,
+} from './server';

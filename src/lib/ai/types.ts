@@ -165,6 +165,8 @@ export class AIError extends Error {
 }
 
 export class RateLimitError extends AIError {
+  public retryAfter?: number;
+  
   constructor(provider: AIProvider, retryAfter?: number) {
     super(
       `Rate limit exceeded for ${provider}`,
@@ -174,6 +176,7 @@ export class RateLimitError extends AIError {
       { retryAfter }
     );
     this.name = 'RateLimitError';
+    this.retryAfter = retryAfter;
   }
 }
 
@@ -186,6 +189,30 @@ export class AuthenticationError extends AIError {
       401
     );
     this.name = 'AuthenticationError';
+  }
+}
+
+export class NetworkError extends AIError {
+  constructor(provider: AIProvider, message?: string) {
+    super(
+      message || `Network error for ${provider}`,
+      'NETWORK_ERROR',
+      provider,
+      0
+    );
+    this.name = 'NetworkError';
+  }
+}
+
+export class APIError extends AIError {
+  constructor(provider: AIProvider, message: string, statusCode?: number) {
+    super(
+      message,
+      'API_ERROR',
+      provider,
+      statusCode
+    );
+    this.name = 'APIError';
   }
 }
 

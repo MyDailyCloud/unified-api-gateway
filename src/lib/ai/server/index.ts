@@ -14,6 +14,11 @@ import { ConversationManager, MessageManager, createConversationManager, createM
 export { loadConfig, validateConfig, generateExampleConfig } from './config';
 export type { ServerConfig, ProviderConfigEntry } from './config';
 
+// 导出认证模块
+export * from './auth';
+export { initServer, cleanupServer } from './init';
+export type { ServerInitConfig, ServerInitResult } from './init';
+
 // ==================== 扩展服务器配置 ====================
 
 export interface ExtendedServerConfig extends ServerConfig {

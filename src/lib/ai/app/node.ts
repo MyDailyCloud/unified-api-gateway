@@ -5,6 +5,7 @@
 
 import { AICore, createAICore, type AICoreConfig } from '../core';
 import { createHttpServer, type HttpServerConfig, type HttpServerInstance } from '../transport';
+import { initServer, cleanupServer, type ServerInitConfig, type ServerInitResult } from '../server/init';
 import type { StorageConfig } from '../storage/types';
 import type { AIProvider } from '../types';
 
@@ -23,6 +24,10 @@ export interface NodeAppConfig {
   }>;
   /** 启动模式 */
   mode?: 'api-only' | 'internal-only' | 'full';
+  /** 认证配置 */
+  auth?: ServerInitConfig;
+  /** 是否静默模式 */
+  silent?: boolean;
 }
 
 export interface NodeAppInstance {
@@ -30,10 +35,14 @@ export interface NodeAppInstance {
   core: AICore;
   /** HTTP 服务器实例 */
   server: HttpServerInstance;
+  /** 认证初始化结果 */
+  auth: ServerInitResult;
   /** 启动应用 */
   start(): Promise<void>;
   /** 停止应用 */
   stop(): Promise<void>;
+  /** 获取生成的 Admin 密码（仅首次启动） */
+  getGeneratedPassword(): string | undefined;
 }
 
 /**
@@ -41,6 +50,13 @@ export interface NodeAppInstance {
  */
 export async function createNodeApp(config: NodeAppConfig = {}): Promise<NodeAppInstance> {
   const mode = config.mode ?? 'full';
+  const silent = config.silent ?? false;
+
+  // 初始化认证系统
+  const auth = await initServer({
+    ...config.auth,
+    silent,
+  });
 
   // 创建核心
   const core = await createAICore({
@@ -113,14 +129,33 @@ export async function createNodeApp(config: NodeAppConfig = {}): Promise<NodeApp
   return {
     core,
     server,
+    auth,
     async start() {
       await server.start();
-      console.log(`Node.js AI App started in ${mode} mode`);
+      if (!silent) {
+        console.log(`\n🚀 Node.js AI App started in ${mode} mode`);
+        console.log(`   Runtime: ${auth.runtimeMode}`);
+        if (auth.runtimeMode === 'node') {
+          console.log(`   Auth: Admin login required`);
+          console.log(`   Endpoints:`);
+          console.log(`   - POST /internal/auth/login      Admin login`);
+          console.log(`   - POST /internal/auth/logout     Logout`);
+          console.log(`   - POST /internal/auth/change-password  Change password`);
+          console.log(`   - GET  /internal/auth/me         Get current user`);
+          console.log(`   - GET  /internal/auth/status     Auth status`);
+        }
+      }
     },
     async stop() {
       await server.stop();
+      cleanupServer(auth);
       await core.close();
-      console.log('Node.js AI App stopped');
+      if (!silent) {
+        console.log('Node.js AI App stopped');
+      }
+    },
+    getGeneratedPassword() {
+      return auth.generatedPassword;
     },
   };
 }

@@ -304,7 +304,502 @@ client.registerProvider({
 });
 ```
 
-## Electron 集成 / Electron Integration
+## Node.js 独立启动 / Node.js Standalone Server
+
+SDK 提供独立的 HTTP 服务器，可以直接在 Node.js 环境中启动，提供 OpenAI 兼容的 API 端点。
+
+### 快速启动 / Quick Start
+
+```bash
+# 方式 1: 设置环境变量后启动
+export OPENAI_API_KEY=sk-xxx
+export ANTHROPIC_API_KEY=sk-ant-xxx
+npx ts-node src/lib/ai/cli.ts serve
+
+# 方式 2: 使用配置文件
+npx ts-node src/lib/ai/cli.ts init  # 生成配置文件
+# 编辑 .ai-sdk.json
+npx ts-node src/lib/ai/cli.ts serve
+```
+
+### 配置文件格式 / Config File Format
+
+创建 `.ai-sdk.json` 文件：
+
+```json
+{
+  "port": 3000,
+  "host": "0.0.0.0",
+  "providers": [
+    { "provider": "openai", "apiKey": "env:OPENAI_API_KEY" },
+    { "provider": "anthropic", "apiKey": "env:ANTHROPIC_API_KEY" },
+    { "provider": "ollama", "apiKey": "", "baseUrl": "http://localhost:11434" }
+  ],
+  "cors": {
+    "enabled": true,
+    "origins": ["*"]
+  },
+  "logging": {
+    "enabled": true,
+    "level": "info"
+  }
+}
+```
+
+### 支持的环境变量 / Environment Variables
+
+| 环境变量 | 说明 |
+|----------|------|
+| `OPENAI_API_KEY` | OpenAI API Key |
+| `ANTHROPIC_API_KEY` | Anthropic API Key |
+| `GOOGLE_API_KEY` | Google AI API Key |
+| `DEEPSEEK_API_KEY` | DeepSeek API Key |
+| `GROQ_API_KEY` | Groq API Key |
+| `MISTRAL_API_KEY` | Mistral API Key |
+| `COHERE_API_KEY` | Cohere API Key |
+| `TOGETHER_API_KEY` | Together AI API Key |
+| `OPENROUTER_API_KEY` | OpenRouter API Key |
+| `QWEN_API_KEY` | 通义千问 API Key |
+| `MOONSHOT_API_KEY` | 月之暗面 API Key |
+| `GLM_API_KEY` | 智谱 GLM API Key |
+| `CEREBRAS_API_KEY` | Cerebras API Key |
+| `OLLAMA_HOST` | Ollama 服务器地址 |
+| `AI_SDK_PORT` | 服务器端口覆盖 |
+| `AI_SDK_HOST` | 服务器主机覆盖 |
+
+### 在代码中使用 / Programmatic Usage
+
+```typescript
+import { createServer, startServer } from '@/lib/ai';
+
+// 方式 1: 快速启动
+const server = await startServer();
+// 服务器运行在 http://localhost:3000
+
+// 方式 2: 自定义配置
+const server = await createServer({
+  port: 8080,
+  providers: [
+    { provider: 'openai', apiKey: process.env.OPENAI_API_KEY! },
+    { provider: 'ollama', apiKey: '', baseUrl: 'http://localhost:11434' },
+  ],
+});
+await server.start();
+
+// 获取 AI Client 实例
+const client = server.getClient();
+const response = await client.chat({
+  model: 'gpt-4o',
+  messages: [{ role: 'user', content: 'Hello!' }],
+});
+
+// 停止服务器
+await server.stop();
+```
+
+### API 端点 / API Endpoints
+
+服务器启动后提供以下端点：
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/health` | GET | 健康检查，返回提供商列表 |
+| `/v1/models` | GET | 列出所有可用模型 |
+| `/v1/chat/completions` | POST | Chat Completions (OpenAI 兼容) |
+
+### 请求示例 / Request Examples
+
+```bash
+# 健康检查
+curl http://localhost:3000/health
+
+# 列出模型
+curl http://localhost:3000/v1/models
+
+# Chat Completions (非流式)
+curl http://localhost:3000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+
+# Chat Completions (流式)
+curl http://localhost:3000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o",
+    "messages": [{"role": "user", "content": "Tell me a story"}],
+    "stream": true
+  }'
+
+# 指定提供商
+curl http://localhost:3000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-sonnet-4-5",
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "provider": "anthropic"
+  }'
+```
+
+---
+
+## Electron 完整集成 / Electron Complete Integration
+
+SDK 提供完整的 Electron 集成方案，包括主进程、Preload 脚本和渲染进程的完整示例。
+
+### 安装依赖 / Install Dependencies
+
+```bash
+npm install electron electron-store --save-dev
+# 可选: 使用系统密钥链存储
+npm install keytar --save-dev
+```
+
+### 目录结构 / Directory Structure
+
+```
+your-electron-app/
+├── src/
+│   ├── main/
+│   │   └── main.ts          # 主进程
+│   ├── preload/
+│   │   └── preload.ts       # Preload 脚本
+│   ├── renderer/
+│   │   └── App.tsx          # 渲染进程 React 组件
+│   └── global.d.ts          # 类型声明
+└── package.json
+```
+
+### 1. 主进程配置 / Main Process Setup
+
+```typescript
+// src/main/main.ts
+import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import path from 'path';
+import Store from 'electron-store';
+import {
+  createMainBridge,
+  createElectronStoreStorage,
+  // createKeytarStorage, // 如需系统级安全存储
+  type MainBridgeConfig,
+} from '@ai-sdk/electron';
+
+// 1. 配置安全存储
+const store = new Store({
+  name: 'ai-sdk-config',
+  encryptionKey: 'your-encryption-key', // 可选：加密存储
+});
+const secureStorage = createElectronStoreStorage(store);
+
+// 可选: 使用 keytar (系统密钥链，更安全)
+// import keytar from 'keytar';
+// const secureStorage = createKeytarStorage(keytar, 'your-app-name');
+
+// 2. 创建 AI Bridge
+const bridgeConfig: MainBridgeConfig = {
+  secureStorage,
+  defaultProvider: 'openai',
+};
+const aiBridge = createMainBridge(bridgeConfig);
+
+// 3. 预加载提供商
+async function loadStoredProviders() {
+  try {
+    await aiBridge.loadProvidersFromStorage([
+      { provider: 'openai', defaultModel: 'gpt-4' },
+      { provider: 'anthropic', defaultModel: 'claude-3-opus-20240229' },
+      { provider: 'ollama', baseUrl: 'http://localhost:11434' },
+    ]);
+    console.log('Loaded stored providers');
+  } catch (error) {
+    console.log('No stored providers found');
+  }
+}
+
+// 4. 创建窗口
+let mainWindow: BrowserWindow | null = null;
+
+function createWindow() {
+  mainWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    webPreferences: {
+      preload: path.join(__dirname, '../preload/preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  if (process.env.NODE_ENV === 'development') {
+    mainWindow.loadURL('http://localhost:5173');
+    mainWindow.webContents.openDevTools();
+  } else {
+    mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
+  }
+}
+
+// 5. 应用生命周期
+app.whenReady().then(async () => {
+  aiBridge.initialize(ipcMain);
+  await loadStoredProviders();
+  createWindow();
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  });
+});
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') app.quit();
+});
+
+app.on('will-quit', () => {
+  aiBridge.destroy(ipcMain);
+});
+
+// 6. 额外 IPC 处理器
+ipcMain.handle('app:getInfo', () => ({
+  version: app.getVersion(),
+  platform: process.platform,
+  arch: process.arch,
+}));
+
+ipcMain.handle('app:openExternal', async (_event, url: string) => {
+  await shell.openExternal(url);
+});
+```
+
+### 2. Preload 脚本 / Preload Script
+
+```typescript
+// src/preload/preload.ts
+import { contextBridge, ipcRenderer } from 'electron';
+import { initPreloadAI, type PreloadAIAPI } from '@ai-sdk/electron';
+
+// 初始化 AI API
+const aiAPI: PreloadAIAPI = initPreloadAI(ipcRenderer);
+
+// 暴露给渲染进程
+contextBridge.exposeInMainWorld('ai', aiAPI);
+
+contextBridge.exposeInMainWorld('app', {
+  getInfo: () => ipcRenderer.invoke('app:getInfo'),
+  openExternal: (url: string) => ipcRenderer.invoke('app:openExternal', url),
+  platform: process.platform,
+});
+```
+
+### 3. 类型声明 / Type Declarations
+
+```typescript
+// src/global.d.ts
+import type { PreloadAIAPI } from '@ai-sdk/electron';
+
+declare global {
+  interface Window {
+    ai: PreloadAIAPI;
+    app: {
+      getInfo: () => Promise<{
+        version: string;
+        platform: string;
+        arch: string;
+      }>;
+      openExternal: (url: string) => Promise<void>;
+      platform: string;
+    };
+  }
+}
+
+export {};
+```
+
+### 4. 渲染进程使用 / Renderer Process Usage
+
+```typescript
+// src/renderer/App.tsx
+import { useState, useCallback } from 'react';
+
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+function App() {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const sendMessage = useCallback(async () => {
+    if (!input.trim() || isLoading) return;
+
+    const userMessage: Message = { role: 'user', content: input };
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+
+    try {
+      // 方式 1: 非流式请求
+      const response = await window.ai.chat({
+        messages: [...messages, userMessage],
+        model: 'gpt-4',
+      });
+
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: response.choices[0].message.content as string,
+      }]);
+
+      // 方式 2: 流式请求
+      // let assistantContent = '';
+      // const unsubscribe = window.ai.onStreamChunk((chunk) => {
+      //   const delta = chunk.choices[0]?.delta?.content;
+      //   if (delta) {
+      //     assistantContent += delta;
+      //     setMessages(prev => {
+      //       const updated = [...prev];
+      //       const last = updated[updated.length - 1];
+      //       if (last?.role === 'assistant') {
+      //         last.content = assistantContent;
+      //       } else {
+      //         updated.push({ role: 'assistant', content: assistantContent });
+      //       }
+      //       return [...updated];
+      //     });
+      //   }
+      // });
+      // await window.ai.chatStream({ messages: [...messages, userMessage], model: 'gpt-4' });
+      // unsubscribe();
+
+    } catch (error) {
+      console.error('Chat error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [input, messages, isLoading]);
+
+  return (
+    <div className="app">
+      <div className="messages">
+        {messages.map((msg, i) => (
+          <div key={i} className={`message ${msg.role}`}>
+            <strong>{msg.role}:</strong> {msg.content}
+          </div>
+        ))}
+      </div>
+      <div className="input-area">
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+          placeholder="Type a message..."
+          disabled={isLoading}
+        />
+        <button onClick={sendMessage} disabled={isLoading || !input.trim()}>
+          {isLoading ? 'Sending...' : 'Send'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default App;
+```
+
+### 5. API Key 管理 / API Key Management
+
+```typescript
+// 在渲染进程中管理 API Keys
+
+// 存储 API Key
+await window.ai.storeApiKey('openai', 'sk-xxx');
+
+// 注册提供商
+await window.ai.registerProvider({
+  provider: 'openai',
+  apiKey: 'sk-xxx',
+});
+
+// 验证 API Key
+const isValid = await window.ai.validateApiKey('openai');
+
+// 获取模型列表
+const models = await window.ai.listModels('openai');
+```
+
+### 6. 自定义 React Hook
+
+```typescript
+// src/renderer/hooks/useAI.ts
+import { useState, useCallback, useEffect } from 'react';
+
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export function useAI(model = 'gpt-4') {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const sendMessage = useCallback(async (content: string, stream = false) => {
+    const userMessage: Message = { role: 'user', content };
+    setMessages(prev => [...prev, userMessage]);
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      if (stream) {
+        let assistantContent = '';
+        const unsubscribe = window.ai.onStreamChunk((chunk) => {
+          const delta = chunk.choices[0]?.delta?.content;
+          if (delta) {
+            assistantContent += delta;
+            setMessages(prev => {
+              const updated = [...prev];
+              const last = updated[updated.length - 1];
+              if (last?.role === 'assistant') {
+                return prev.map((m, i) => 
+                  i === prev.length - 1 ? { ...m, content: assistantContent } : m
+                );
+              }
+              return [...prev, { role: 'assistant', content: assistantContent }];
+            });
+          }
+        });
+
+        await window.ai.chatStream({ messages: [...messages, userMessage], model });
+        unsubscribe();
+      } else {
+        const response = await window.ai.chat({
+          messages: [...messages, userMessage],
+          model,
+        });
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: response.choices[0].message.content as string,
+        }]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error(String(err)));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [messages, model]);
+
+  const clearMessages = useCallback(() => setMessages([]), []);
+
+  return { messages, isLoading, error, sendMessage, clearMessages };
+}
+```
+
+---
+
+## 简单 Electron 集成 / Simple Electron Integration
+
+如果只需要基本功能，可以使用简化版本：
 
 ```typescript
 // main process

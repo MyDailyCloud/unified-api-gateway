@@ -34,3 +34,12 @@ export {
   type ElectronIpcMain,
   type ElectronIpcMainEvent,
 } from './main-bridge';
+
+// 示例代码
+export {
+  mainExample,
+  preloadExample,
+  exampleDescription,
+  type MainProcessExample,
+  type PreloadExample,
+} from './example';

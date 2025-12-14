@@ -28,12 +28,16 @@ export {
   createMoonshot,
   createQwen,
   createCustomProvider,
+  createMultimodalOpenAI,
+  createMultimodalGoogle,
   type OpenAIFactoryConfig,
   type AnthropicFactoryConfig,
   type GoogleFactoryConfig,
   type AzureOpenAIFactoryConfig,
   type GenericFactoryConfig,
   type ModelReference,
+  type MultimodalProviderConfig,
+  type MultimodalModelRef,
 } from './factory';
 
 // 注册表

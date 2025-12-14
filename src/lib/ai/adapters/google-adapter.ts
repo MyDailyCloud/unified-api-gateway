@@ -13,6 +13,11 @@ import type {
   ProviderConfig,
   Message,
   ContentPart,
+  AdapterCapabilities,
+  EmbeddingRequest,
+  EmbeddingResponse,
+  ImageGenerationRequest,
+  ImageGenerationResponse,
 } from '../types';
 
 interface GeminiContent {
@@ -39,6 +44,7 @@ interface GeminiRequest {
     maxOutputTokens?: number;
     topP?: number;
     stopSequences?: string[];
+    responseModalities?: string[];
   };
   systemInstruction?: {
     parts: { text: string }[];
@@ -57,6 +63,21 @@ export class GoogleAdapter extends BaseAdapter {
       baseURL: config.baseURL || 'https://generativelanguage.googleapis.com/v1beta',
     });
   }
+  
+  // ==================== 能力声明 ====================
+  
+  getCapabilities(): AdapterCapabilities {
+    return {
+      chat: true,
+      streaming: true,
+      embedding: true,
+      imageGeneration: true,
+      speech: false,
+      transcription: false,
+      vision: true,
+      tools: true,
+    };
+  }
 
   protected buildHeaders(): Record<string, string> {
     return {
@@ -64,6 +85,84 @@ export class GoogleAdapter extends BaseAdapter {
       ...this.config.headers,
     };
   }
+  
+  // ==================== 文本嵌入 ====================
+  
+  async embed(request: EmbeddingRequest): Promise<EmbeddingResponse> {
+    const model = request.model || 'text-embedding-004';
+    const url = `${this.config.baseURL}/models/${model}:embedContent?key=${this.config.apiKey}`;
+    
+    const inputs = Array.isArray(request.input) ? request.input : [request.input];
+    const embeddings: EmbeddingResponse['data'] = [];
+    
+    for (let i = 0; i < inputs.length; i++) {
+      const response = await this.fetchWithRetry(url, {
+        method: 'POST',
+        headers: this.buildHeaders(),
+        body: JSON.stringify({
+          model: `models/${model}`,
+          content: { parts: [{ text: inputs[i] }] },
+          outputDimensionality: request.dimensions,
+        }),
+      });
+      
+      const data = await response.json();
+      embeddings.push({
+        object: 'embedding',
+        embedding: data.embedding?.values || [],
+        index: i,
+      });
+    }
+    
+    return {
+      object: 'list',
+      model,
+      data: embeddings,
+      usage: {
+        prompt_tokens: 0,
+        total_tokens: 0,
+      },
+    };
+  }
+  
+  // ==================== 图像生成 ====================
+  
+  async generateImage(request: ImageGenerationRequest): Promise<ImageGenerationResponse> {
+    const model = request.model || 'gemini-2.0-flash-exp';
+    const url = `${this.config.baseURL}/models/${model}:generateContent?key=${this.config.apiKey}`;
+    
+    const response = await this.fetchWithRetry(url, {
+      method: 'POST',
+      headers: this.buildHeaders(),
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: request.prompt }] }],
+        generationConfig: {
+          responseModalities: ['TEXT', 'IMAGE'],
+        },
+      }),
+    });
+    
+    const data = await response.json();
+    const images: ImageGenerationResponse['data'] = [];
+    
+    if (data.candidates?.[0]?.content?.parts) {
+      for (const part of data.candidates[0].content.parts) {
+        if (part.inlineData?.mimeType?.startsWith('image/')) {
+          images.push({
+            b64_json: part.inlineData.data,
+            revised_prompt: request.prompt,
+          });
+        }
+      }
+    }
+    
+    return {
+      created: Date.now(),
+      data: images,
+    };
+  }
+  
+  // ==================== 文本生成 ====================
 
   async chat(request: ChatCompletionRequest): Promise<ChatCompletionResponse> {
     const geminiRequest = this.convertToGeminiFormat(request);

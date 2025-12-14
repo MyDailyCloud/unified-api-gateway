@@ -14,6 +14,15 @@ import {
   AIError,
   AuthenticationError,
   RateLimitError,
+  AdapterCapabilities,
+  EmbeddingRequest,
+  EmbeddingResponse,
+  ImageGenerationRequest,
+  ImageGenerationResponse,
+  SpeechRequest,
+  SpeechResponse,
+  TranscriptionRequest,
+  TranscriptionResponse,
 } from '../types';
 
 export abstract class BaseAdapter implements AIAdapter {
@@ -33,6 +42,37 @@ export abstract class BaseAdapter implements AIAdapter {
   abstract chat(request: ChatCompletionRequest): Promise<ChatCompletionResponse>;
   abstract chatStream(request: ChatCompletionRequest): AsyncIterable<StreamChunk>;
   abstract listModels(): Promise<ModelInfo[]>;
+  
+  // 默认能力 - 子类可覆盖
+  getCapabilities(): AdapterCapabilities {
+    return {
+      chat: true,
+      streaming: true,
+      embedding: false,
+      imageGeneration: false,
+      speech: false,
+      transcription: false,
+      vision: false,
+      tools: false,
+    };
+  }
+  
+  // 可选全模态方法 - 子类可实现
+  async embed?(request: EmbeddingRequest): Promise<EmbeddingResponse> {
+    throw new AIError('Embedding not supported by this provider', 'NOT_SUPPORTED', this.provider);
+  }
+  
+  async generateImage?(request: ImageGenerationRequest): Promise<ImageGenerationResponse> {
+    throw new AIError('Image generation not supported by this provider', 'NOT_SUPPORTED', this.provider);
+  }
+  
+  async speak?(request: SpeechRequest): Promise<SpeechResponse> {
+    throw new AIError('Speech synthesis not supported by this provider', 'NOT_SUPPORTED', this.provider);
+  }
+  
+  async transcribe?(request: TranscriptionRequest): Promise<TranscriptionResponse> {
+    throw new AIError('Transcription not supported by this provider', 'NOT_SUPPORTED', this.provider);
+  }
   
   // 通用方法
   getConfig(): ProviderConfig {

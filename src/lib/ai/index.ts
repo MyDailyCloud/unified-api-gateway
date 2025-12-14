@@ -123,3 +123,6 @@ export {
 
 // Electron 集成
 export * from './electron';
+
+// 本地服务发现
+export { discoverLocalServices, getAvailableLocalServices, isServiceAvailable, createServiceDiscovery, serviceDiscovery, type LocalServiceInfo, type DiscoveryConfig } from './discovery';

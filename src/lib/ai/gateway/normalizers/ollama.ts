@@ -114,8 +114,45 @@ export interface OllamaGenerateResponse {
   eval_duration?: number;
 }
 
+export interface OllamaGenerateStreamChunk {
+  model: string;
+  created_at: string;
+  response: string;
+  done: boolean;
+  done_reason?: string;
+  context?: number[];
+  total_duration?: number;
+  eval_count?: number;
+}
+
+// Union types for request detection
+export type OllamaRequest = OllamaChatRequest | OllamaGenerateRequest;
+export type OllamaResponse = OllamaChatResponse | OllamaGenerateResponse;
+
 // ============================================================================
-// Normalizer Implementation
+// Helper Functions
+// ============================================================================
+
+/**
+ * Detect if request is a generate request (has prompt) vs chat request (has messages)
+ */
+function isGenerateRequest(request: unknown): request is OllamaGenerateRequest {
+  if (typeof request !== 'object' || request === null) return false;
+  const req = request as Record<string, unknown>;
+  return typeof req.prompt === 'string' && !Array.isArray(req.messages);
+}
+
+/**
+ * Detect if request is a chat request
+ */
+function isChatRequest(request: unknown): request is OllamaChatRequest {
+  if (typeof request !== 'object' || request === null) return false;
+  const req = request as Record<string, unknown>;
+  return Array.isArray(req.messages);
+}
+
+// ============================================================================
+// Chat Normalizer (/api/chat)
 // ============================================================================
 
 export const ollamaNormalizer: RequestNormalizer<
@@ -126,7 +163,7 @@ export const ollamaNormalizer: RequestNormalizer<
   format: 'ollama',
 
   /**
-   * Normalize Ollama request to unified format
+   * Normalize Ollama chat request to unified format
    */
   normalize(request: OllamaChatRequest): UnifiedRequest {
     return {
@@ -159,7 +196,7 @@ export const ollamaNormalizer: RequestNormalizer<
   },
 
   /**
-   * Denormalize unified response to Ollama format
+   * Denormalize unified response to Ollama chat format
    */
   denormalize(response: UnifiedResponse): OllamaChatResponse {
     const choice = response.choices[0];
@@ -172,13 +209,14 @@ export const ollamaNormalizer: RequestNormalizer<
         content: choice?.message?.content || '',
       },
       done: true,
+      done_reason: choice?.finish_reason === 'length' ? 'length' : 'stop',
       prompt_eval_count: response.usage?.prompt_tokens,
       eval_count: response.usage?.completion_tokens,
     };
   },
 
   /**
-   * Denormalize unified stream chunk to Ollama format
+   * Denormalize unified stream chunk to Ollama chat format
    */
   denormalizeStream(chunk: UnifiedStreamChunk): OllamaStreamChunk {
     const choice = chunk.choices[0];
@@ -192,34 +230,122 @@ export const ollamaNormalizer: RequestNormalizer<
         content: choice?.delta?.content || '',
       },
       done: isDone,
+      done_reason: isDone ? (choice?.finish_reason || 'stop') : undefined,
     };
   },
 
-  /**
-   * Parse Ollama request from HTTP body
-   */
   parseRequest(body: unknown): OllamaChatRequest {
     return body as OllamaChatRequest;
   },
 
-  /**
-   * Validate Ollama request format
-   */
   validate(request: unknown): request is OllamaChatRequest {
-    if (typeof request !== 'object' || request === null) return false;
-    const req = request as Record<string, unknown>;
-    return (
-      typeof req.model === 'string' &&
-      Array.isArray(req.messages) &&
-      req.messages.every(
-        (msg: unknown) =>
-          typeof msg === 'object' &&
-          msg !== null &&
-          typeof (msg as Record<string, unknown>).role === 'string' &&
-          typeof (msg as Record<string, unknown>).content === 'string'
-      )
-    );
+    return isChatRequest(request);
   },
 };
+
+// ============================================================================
+// Generate Normalizer (/api/generate)
+// ============================================================================
+
+export const ollamaGenerateNormalizer: RequestNormalizer<
+  OllamaGenerateRequest,
+  OllamaGenerateResponse,
+  OllamaGenerateStreamChunk
+> = {
+  format: 'ollama-generate',
+
+  /**
+   * Normalize Ollama generate request to unified format
+   * Converts prompt-based request to messages format
+   */
+  normalize(request: OllamaGenerateRequest): UnifiedRequest {
+    const messages: UnifiedRequest['messages'] = [];
+    
+    // Add system message if present
+    if (request.system) {
+      messages.push({ role: 'system', content: request.system });
+    }
+    
+    // Add prompt as user message
+    messages.push({ role: 'user', content: request.prompt });
+    
+    return {
+      model: request.model,
+      messages,
+      max_tokens: request.options?.num_predict,
+      temperature: request.options?.temperature,
+      top_p: request.options?.top_p,
+      top_k: request.options?.top_k,
+      stop: request.options?.stop,
+      stream: request.stream,
+      seed: request.options?.seed,
+      presence_penalty: request.options?.presence_penalty,
+      frequency_penalty: request.options?.frequency_penalty,
+      response_format: request.format === 'json' ? { type: 'json_object' } : undefined,
+    };
+  },
+
+  /**
+   * Denormalize unified response to Ollama generate format
+   */
+  denormalize(response: UnifiedResponse): OllamaGenerateResponse {
+    const choice = response.choices[0];
+    
+    return {
+      model: response.model,
+      created_at: new Date(response.created * 1000).toISOString(),
+      response: choice?.message?.content || '',
+      done: true,
+      done_reason: choice?.finish_reason === 'length' ? 'length' : 'stop',
+      prompt_eval_count: response.usage?.prompt_tokens,
+      eval_count: response.usage?.completion_tokens,
+    };
+  },
+
+  /**
+   * Denormalize unified stream chunk to Ollama generate format
+   */
+  denormalizeStream(chunk: UnifiedStreamChunk): OllamaGenerateStreamChunk {
+    const choice = chunk.choices[0];
+    const isDone = choice?.finish_reason !== null;
+    
+    return {
+      model: chunk.model,
+      created_at: new Date(chunk.created * 1000).toISOString(),
+      response: choice?.delta?.content || '',
+      done: isDone,
+      done_reason: isDone ? (choice?.finish_reason || 'stop') : undefined,
+    };
+  },
+
+  parseRequest(body: unknown): OllamaGenerateRequest {
+    return body as OllamaGenerateRequest;
+  },
+
+  validate(request: unknown): request is OllamaGenerateRequest {
+    return isGenerateRequest(request);
+  },
+};
+
+// ============================================================================
+// Unified Ollama Normalizer (auto-detects chat vs generate)
+// ============================================================================
+
+/**
+ * Auto-detect and normalize any Ollama request format
+ */
+export function normalizeOllamaRequest(request: OllamaRequest): UnifiedRequest {
+  if (isGenerateRequest(request)) {
+    return ollamaGenerateNormalizer.normalize(request);
+  }
+  return ollamaNormalizer.normalize(request);
+}
+
+/**
+ * Validate any Ollama request format
+ */
+export function validateOllamaRequest(request: unknown): request is OllamaRequest {
+  return isChatRequest(request) || isGenerateRequest(request);
+}
 
 export default ollamaNormalizer;

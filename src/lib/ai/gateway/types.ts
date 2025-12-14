@@ -15,8 +15,9 @@ export type RequestFormat =
   | 'google' 
   | 'cohere' 
   | 'mistral'
-  | 'ollama'       // Native Ollama API
-  | 'llamacpp'     // Native llama.cpp API
+  | 'ollama'           // Native Ollama /api/chat
+  | 'ollama-generate'  // Native Ollama /api/generate
+  | 'llamacpp'         // Native llama.cpp API
   // OpenAI-compatible formats (use openaiNormalizer)
   | 'vllm'
   | 'lmstudio'

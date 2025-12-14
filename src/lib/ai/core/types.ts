@@ -3,7 +3,7 @@
  * Core Layer Type Definitions
  */
 
-import type { AIProvider, ChatRequest, ChatResponse, StreamCallback } from '../types';
+import type { AIProvider, ChatCompletionRequest as BaseChatRequest, ChatCompletionResponse as BaseChatResponse } from '../types';
 import type { UnifiedStorage, StorageConfig } from '../storage/types';
 
 // ==================== 核心配置 ====================
@@ -36,7 +36,7 @@ export interface AIServiceConfig {
   enableStreaming?: boolean;
 }
 
-export interface ChatCompletionRequest {
+export interface OpenAIChatCompletionRequest {
   model?: string;
   messages: Array<{
     role: 'system' | 'user' | 'assistant';
@@ -51,7 +51,7 @@ export interface ChatCompletionRequest {
   stop?: string | string[];
 }
 
-export interface ChatCompletionResponse {
+export interface OpenAIChatCompletionResponse {
   id: string;
   object: 'chat.completion';
   created: number;
@@ -71,7 +71,7 @@ export interface ChatCompletionResponse {
   };
 }
 
-export interface ChatCompletionChunk {
+export interface OpenAIChatCompletionChunk {
   id: string;
   object: 'chat.completion.chunk';
   created: number;
@@ -182,9 +182,9 @@ export type CoreEventListener<T = unknown> = (event: CoreEvent<T>) => void;
 
 export interface IAIService {
   /** 聊天补全 */
-  chatCompletion(request: ChatCompletionRequest): Promise<ChatCompletionResponse>;
+  chatCompletion(request: OpenAIChatCompletionRequest): Promise<OpenAIChatCompletionResponse>;
   /** 流式聊天补全 */
-  streamChatCompletion(request: ChatCompletionRequest, onChunk: (chunk: ChatCompletionChunk) => void): Promise<void>;
+  streamChatCompletion(request: OpenAIChatCompletionRequest, onChunk: (chunk: OpenAIChatCompletionChunk) => void): Promise<void>;
   /** 获取模型列表 */
   listModels(): Promise<ModelsResponse>;
 }
@@ -209,3 +209,8 @@ export interface IInternalService {
   /** 获取统计信息 */
   getStats(): Promise<StatsResponse>;
 }
+
+// 重导出为兼容名称
+export type ChatCompletionRequest = OpenAIChatCompletionRequest;
+export type ChatCompletionResponse = OpenAIChatCompletionResponse;
+export type ChatCompletionChunk = OpenAIChatCompletionChunk;

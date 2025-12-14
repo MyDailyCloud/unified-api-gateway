@@ -157,6 +157,12 @@ export type AIProvider =
   | 'azure'
   | 'mistral'
   | 'cohere'
+  | 'together'
+  | 'openrouter'
+  | 'ollama'
+  | 'lmstudio'
+  | 'llamacpp'
+  | 'vllm'
   | 'custom';
 
 export interface ProviderConfig {

@@ -60,23 +60,26 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y xvfb libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libgbm1 libasound2
 
-      - name: Smoke test Electron startup (启动测试)
+      - name: Health check Electron backend (后端健康检查)
         run: |
-          # Start Electron app in headless mode and verify it starts
+          # Run Electron in health check mode
           xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" \
-            npx electron dist-electron/main.js --no-sandbox --disable-gpu &
-          ELECTRON_PID=$!
+            npx electron dist-electron/main.js --health-check --no-sandbox --disable-gpu 2>&1 | tee health-check.log
           
-          # Wait for app to start (max 15 seconds)
-          sleep 10
-          
-          # Check if process is still running (means it started successfully)
-          if kill -0 $ELECTRON_PID 2>/dev/null; then
-            echo "✅ Electron app started successfully!"
-            kill $ELECTRON_PID || true
+          # Check output for success/failure
+          if grep -q "HEALTH_CHECK_PASSED" health-check.log; then
+            echo ""
+            echo "=========================================="
+            echo "✅ Backend health check passed!"
+            echo "=========================================="
             exit 0
           else
-            echo "❌ Electron app failed to start"
+            echo ""
+            echo "=========================================="
+            echo "❌ Backend health check failed"
+            echo "=========================================="
+            echo "Full log:"
+            cat health-check.log
             exit 1
           fi
         timeout-minutes: 2

@@ -13,8 +13,12 @@ export {
   checkRoutePermission, 
   createAuthMiddleware 
 } from './middleware';
-export type { AuthMiddlewareConfig, RoutePermission } from './middleware';
+export type { AuthMiddlewareConfig, RoutePermission, ExtendedAuthContext } from './middleware';
 export { AuthRouter, createAuthRouter } from './auth-router';
-export type { AuthRouterConfig, HttpRequest, HttpResponse } from './auth-router';
-export * from './session';
-export * from './middleware';
+export type { AuthRouterConfig } from './auth-router';
+export type { HttpRequest, HttpResponse } from './auth-router';
+
+// Gateway API Key 管理
+export * from './gateway-keys';
+export { GatewayKeyRouter, createGatewayKeyRouter } from './gateway-key-router';
+export type { GatewayKeyRouterConfig } from './gateway-key-router';

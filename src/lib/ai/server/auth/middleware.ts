@@ -7,6 +7,7 @@ import type { AuthContext, AuthConfig, AuthMode, UserRole } from './types';
 import { detectRuntimeMode } from './runtime-mode';
 import { CredentialsManager } from './credentials';
 import { SessionManager } from './session';
+import type { GatewayKeyManager, GatewayApiKey } from './gateway-keys';
 
 export interface HttpRequest {
   method: string;
@@ -21,6 +22,14 @@ export interface AuthMiddlewareConfig extends AuthConfig {
   credentialsManager?: CredentialsManager;
   /** 会话管理器 */
   sessionManager?: SessionManager;
+  /** Gateway Key 管理器 */
+  gatewayKeyManager?: GatewayKeyManager;
+}
+
+/** 扩展的认证上下文（包含 Gateway Key 信息） */
+export interface ExtendedAuthContext extends AuthContext {
+  /** Gateway Key 信息（如果使用 Gateway 模式） */
+  gatewayKey?: GatewayApiKey;
 }
 
 /**
@@ -30,12 +39,14 @@ export class AuthMiddleware {
   private config: AuthMiddlewareConfig;
   private credentialsManager: CredentialsManager;
   private sessionManager: SessionManager;
+  private gatewayKeyManager?: GatewayKeyManager;
   private runtimeMode = detectRuntimeMode();
 
   constructor(config: AuthMiddlewareConfig) {
     this.config = config;
     this.credentialsManager = config.credentialsManager ?? new CredentialsManager(config.credentialsPath);
     this.sessionManager = config.sessionManager ?? new SessionManager(config.sessionTimeout);
+    this.gatewayKeyManager = config.gatewayKeyManager;
   }
 
   /**
@@ -112,7 +123,7 @@ export class AuthMiddleware {
     if (authHeader.startsWith('Bearer ')) {
       const token = authHeader.slice(7);
 
-      // 检查是否为 Gateway API Key
+      // 检查是否为静态 Gateway API Key（向后兼容）
       if (this.config.gatewayApiKey && token === this.config.gatewayApiKey) {
         return {
           role: 'anonymous',
@@ -120,6 +131,20 @@ export class AuthMiddleware {
           userId: 'gateway-user',
           authenticated: true,
         };
+      }
+
+      // 检查是否为动态 Gateway API Key
+      if (this.gatewayKeyManager) {
+        const { valid, keyInfo } = await this.gatewayKeyManager.verify(token);
+        if (valid && keyInfo) {
+          return {
+            role: 'anonymous',
+            mode: 'gateway',
+            userId: `gateway-${keyInfo.id}`,
+            authenticated: true,
+            gatewayKey: keyInfo,
+          } as ExtendedAuthContext;
+        }
       }
 
       // 检查是否为 Session Token
@@ -195,6 +220,20 @@ export class AuthMiddleware {
    */
   getRuntimeMode() {
     return this.runtimeMode;
+  }
+
+  /**
+   * 获取 Gateway Key 管理器
+   */
+  getGatewayKeyManager(): GatewayKeyManager | undefined {
+    return this.gatewayKeyManager;
+  }
+
+  /**
+   * 设置 Gateway Key 管理器
+   */
+  setGatewayKeyManager(manager: GatewayKeyManager): void {
+    this.gatewayKeyManager = manager;
   }
 }
 

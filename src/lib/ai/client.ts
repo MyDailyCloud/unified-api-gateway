@@ -21,6 +21,8 @@ import {
   SpeechResponse,
   TranscriptionRequest,
   TranscriptionResponse,
+  RerankRequest,
+  RerankResponse,
 } from './types';
 import {
   OpenAIAdapter,
@@ -282,6 +284,24 @@ export class AIClient {
       );
     }
     return adapter.transcribe(request);
+  }
+  
+  /**
+   * 重排序 (Cohere)
+   */
+  async rerank(
+    request: RerankRequest,
+    provider?: AIProvider
+  ): Promise<RerankResponse> {
+    const adapter = this.getAdapter(provider);
+    if (!adapter.rerank) {
+      throw new AIError(
+        `Provider ${adapter.provider} does not support rerank`,
+        'NOT_SUPPORTED',
+        adapter.provider
+      );
+    }
+    return adapter.rerank(request);
   }
   
   /**

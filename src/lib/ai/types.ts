@@ -299,6 +299,31 @@ export interface TranscriptionResponse {
   segments?: TranscriptionSegment[];
 }
 
+// ==================== 重排序类型 (Cohere) ====================
+
+export interface RerankRequest {
+  model: string;
+  query: string;
+  documents: string[] | Array<{ text: string }>;
+  top_n?: number;
+  max_tokens_per_doc?: number;
+  return_documents?: boolean;
+}
+
+export interface RerankResult {
+  index: number;
+  relevance_score: number;
+  document?: { text: string };
+}
+
+export interface RerankResponse {
+  id: string;
+  results: RerankResult[];
+  meta?: {
+    billed_units?: { search_units: number };
+  };
+}
+
 // ==================== 适配器能力 ====================
 
 export interface AdapterCapabilities {
@@ -310,6 +335,8 @@ export interface AdapterCapabilities {
   transcription: boolean;
   vision: boolean;
   tools: boolean;
+  rerank?: boolean;
+  ocr?: boolean;
 }
 
 // ==================== 适配器接口 ====================
@@ -326,6 +353,7 @@ export interface AIAdapter {
   generateImage?(request: ImageGenerationRequest): Promise<ImageGenerationResponse>;
   speak?(request: SpeechRequest): Promise<SpeechResponse>;
   transcribe?(request: TranscriptionRequest): Promise<TranscriptionResponse>;
+  rerank?(request: RerankRequest): Promise<RerankResponse>;
   
   // 工具方法
   listModels(): Promise<ModelInfo[]>;

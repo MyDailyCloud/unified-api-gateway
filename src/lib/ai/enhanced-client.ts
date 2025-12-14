@@ -21,6 +21,8 @@ import {
   SpeechResponse,
   TranscriptionRequest,
   TranscriptionResponse,
+  RerankRequest,
+  RerankResponse,
 } from './types';
 import { AIClient, AIClientConfig } from './client';
 import { MiddlewareManager, MiddlewareContext, generateRequestId } from './middleware';
@@ -494,6 +496,41 @@ export class EnhancedAIClient extends AIClient {
     try {
       await this.middleware.executeRequest({ model: request.model, messages: [] }, context);
       const response = await super.transcribe(request, targetProvider);
+      await this.middleware.executeComplete({
+        ...context,
+        duration: Date.now() - startTime,
+        success: true,
+      });
+      return response;
+    } catch (error) {
+      await this.middleware.executeComplete({
+        ...context,
+        duration: Date.now() - startTime,
+        success: false,
+      });
+      throw error;
+    }
+  }
+  
+  /**
+   * 增强的重排序
+   */
+  async rerank(
+    request: RerankRequest,
+    provider?: AIProvider
+  ): Promise<RerankResponse> {
+    const targetProvider = provider || this.getProviders()[0];
+    const requestId = generateRequestId();
+    const startTime = Date.now();
+    const context: MiddlewareContext = {
+      provider: targetProvider,
+      requestId,
+      startTime,
+    };
+    
+    try {
+      await this.middleware.executeRequest({ model: request.model, messages: [] }, context);
+      const response = await super.rerank(request, targetProvider);
       await this.middleware.executeComplete({
         ...context,
         duration: Date.now() - startTime,

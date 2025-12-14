@@ -23,6 +23,8 @@ import {
   SpeechResponse,
   TranscriptionRequest,
   TranscriptionResponse,
+  RerankRequest,
+  RerankResponse,
 } from '../types';
 
 export abstract class BaseAdapter implements AIAdapter {
@@ -72,6 +74,10 @@ export abstract class BaseAdapter implements AIAdapter {
   
   async transcribe?(request: TranscriptionRequest): Promise<TranscriptionResponse> {
     throw new AIError('Transcription not supported by this provider', 'NOT_SUPPORTED', this.provider);
+  }
+  
+  async rerank?(request: RerankRequest): Promise<RerankResponse> {
+    throw new AIError('Rerank not supported by this provider', 'NOT_SUPPORTED', this.provider);
   }
   
   // 通用方法

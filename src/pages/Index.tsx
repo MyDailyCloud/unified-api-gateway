@@ -3,176 +3,220 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Brain, 
+  ArrowLeftRight,
   Layers, 
   Zap, 
   Shield, 
   Code2, 
-  GitBranch,
   Server,
   Cpu,
-  Database,
   ArrowRight,
   Check,
-  Terminal
+  Terminal,
+  Globe,
+  HardDrive,
+  RefreshCw,
+  Coins,
+  Radio,
+  Route,
+  Shuffle
 } from "lucide-react";
 
-const providers = [
-  { name: "OpenAI", models: ["GPT-5", "GPT-4.1", "O3/O4"], color: "bg-emerald-500" },
-  { name: "Anthropic", models: ["Claude 4", "Claude 3.5"], color: "bg-amber-500" },
-  { name: "Cerebras", models: ["Llama 3.3", "Qwen 3"], color: "bg-blue-500" },
-  { name: "GLM", models: ["GLM-4 Plus", "GLM-4V"], color: "bg-purple-500" },
-  { name: "Groq", models: ["Llama 3.3", "Mixtral"], color: "bg-orange-500" },
-  { name: "DeepSeek", models: ["Chat", "Coder", "Reasoner"], color: "bg-cyan-500" },
-  { name: "Moonshot", models: ["V1-8K/32K/128K"], color: "bg-indigo-500" },
-  { name: "Qwen", models: ["Max", "Plus", "VL"], color: "bg-rose-500" },
+// Provider categories
+const cloudProviders = [
+  { name: "OpenAI", models: ["GPT-4o", "GPT-4", "O3/O4-mini"], color: "hsl(142 76% 36%)" },
+  { name: "Anthropic", models: ["Claude 4", "Claude 3.5"], color: "hsl(43 96% 56%)" },
+  { name: "Google", models: ["Gemini 2.0", "Gemini Pro"], color: "hsl(217 91% 60%)" },
+  { name: "Cohere", models: ["Command R+", "Command"], color: "hsl(280 70% 50%)" },
+  { name: "Mistral", models: ["Large", "Medium", "Small"], color: "hsl(25 95% 53%)" },
+  { name: "DeepSeek", models: ["Chat", "Coder", "R1"], color: "hsl(188 78% 41%)" },
 ];
 
-const architectureLayers = [
-  {
-    name: "应用层",
-    nameEn: "Application Layer",
-    icon: Cpu,
-    description: "React Hooks & Components",
-    items: ["useAI()", "useChat()", "Provider Components"],
-    gradient: "from-violet-500 to-purple-600"
-  },
-  {
-    name: "客户端层",
-    nameEn: "Client Layer",
-    icon: Server,
-    description: "统一入口 & 路由",
-    items: ["AIClient", "Provider Registry", "Fallback System"],
-    gradient: "from-blue-500 to-cyan-600"
-  },
-  {
-    name: "适配器层",
-    nameEn: "Adapter Layer",
-    icon: Layers,
-    description: "多平台适配",
-    items: ["OpenAI", "Anthropic", "Cerebras", "GLM", "..."],
-    gradient: "from-emerald-500 to-teal-600"
-  },
-  {
-    name: "基础层",
-    nameEn: "Base Layer",
-    icon: Database,
-    description: "通用功能抽象",
-    items: ["Retry Logic", "Error Handling", "SSE Parser"],
-    gradient: "from-orange-500 to-amber-600"
-  },
+const localEngines = [
+  { name: "Ollama", desc: "本地模型管理", icon: HardDrive },
+  { name: "vLLM", desc: "高性能推理", icon: Zap },
+  { name: "LM Studio", desc: "桌面应用", icon: Cpu },
+  { name: "llama.cpp", desc: "原生推理", icon: Terminal },
+];
+
+const endpoints = [
+  { path: "/v1/openai/chat/completions", format: "OpenAI", desc: "Chat Completions API" },
+  { path: "/v1/anthropic/messages", format: "Anthropic", desc: "Messages API" },
+  { path: "/v1/google/generateContent", format: "Google", desc: "Gemini API" },
+  { path: "/v1/cohere/chat", format: "Cohere", desc: "Chat API" },
+];
+
+const routingStrategies = [
+  { name: "Model Match", icon: Route, desc: "按模型名自动选择后端" },
+  { name: "Cost Optimized", icon: Coins, desc: "优先选择成本最低后端" },
+  { name: "Least Latency", icon: Zap, desc: "选择延迟最低的后端" },
+  { name: "Round Robin", icon: RefreshCw, desc: "轮询分配负载" },
 ];
 
 const codeExamples = {
-  register: `import { AIClient } from '@/lib/ai';
+  gateway: `import { AIGateway } from '@/lib/ai/gateway';
 
-const client = new AIClient();
-
-// 注册多个 AI 提供商
-client.registerProvider({
-  provider: 'openai',
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-client.registerProvider({
-  provider: 'anthropic',
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
-
-client.registerProvider({
-  provider: 'cerebras',
-  apiKey: process.env.CEREBRAS_API_KEY,
+const gateway = new AIGateway({
+  backends: [
+    { name: 'openai', provider: 'openai', priority: 1 },
+    { name: 'ollama', provider: 'ollama', 
+      baseURL: 'http://localhost:11434/v1' },
+    { name: 'fallback', provider: 'together', priority: 3 },
+  ],
+  routing: { 
+    strategy: 'model-match', 
+    autoFailover: true 
+  },
+  modelAliases: { 
+    'gpt-4': 'ollama/llama3.2'  // 本地替代
+  },
 });`,
 
-  chat: `// 非流式调用
-const response = await client.chat({
-  model: 'gpt-4o-mini',
-  messages: [
-    { role: 'user', content: '你好！' }
-  ],
-}, 'openai');
+  any2any: `// 🎯 Any2Any 格式转换 - 核心能力!
 
-// 流式调用
-for await (const chunk of client.chatStream({
-  model: 'claude-sonnet-4-5',
-  messages: [...],
-}, 'anthropic')) {
-  process.stdout.write(chunk.choices[0]?.delta?.content || '');
-}`,
-
-  fallback: `// 带回退的智能调用
-const response = await client.chatWithFallback(
-  {
-    model: 'auto',
-    messages: [{ role: 'user', content: '分析这段代码' }],
-  },
-  ['openai', 'anthropic', 'glm'] // 按优先级尝试
+// OpenAI 格式输入 → Anthropic 格式输出
+const response = await gateway.handleRequest(
+  openaiRequest,    // OpenAI 格式的请求体
+  'openai',         // 输入格式
+  'anthropic'       // 输出格式 ✨
 );
 
-console.log(\`使用了: \${response.usedProvider}\`);`,
+// 或者通过 HTTP Header 控制
+fetch('/v1/openai/chat/completions', {
+  headers: {
+    'X-Response-Format': 'anthropic'  // 魔法在这里!
+  },
+  body: JSON.stringify(openaiRequest)
+});`,
 
-  hooks: `import { useChat } from '@/lib/ai';
+  endpoints: `// 多格式端点 - 同时支持所有主流 API 格式
+import { createGatewayServer } from '@/lib/ai/gateway';
 
-function ChatComponent() {
-  const { messages, send, isLoading } = useChat({
-    provider: 'openai',
-    systemPrompt: 'You are a helpful assistant.',
-  });
+const server = createGatewayServer(gateway);
 
-  return (
-    <div>
-      {messages.map((m, i) => (
-        <div key={i}>{m.role}: {m.content}</div>
-      ))}
-      <button onClick={() => send('Hello!')}>
-        {isLoading ? 'Sending...' : 'Send'}
-      </button>
-    </div>
-  );
-}`,
+// Edge Function / Express 路由
+app.use('/v1/openai/*', server.createHandler('openai'));
+app.use('/v1/anthropic/*', server.createHandler('anthropic'));
+app.use('/v1/google/*', server.createHandler('google'));
+app.use('/v1/cohere/*', server.createHandler('cohere'));
+
+// 或使用统一路由器自动识别
+app.use('/v1/*', server.createUnifiedHandler());`,
+
+  streaming: `// 流式响应 - 所有格式都支持 SSE
+for await (const chunk of gateway.handleStreamRequest(
+  request,
+  'openai',      // 输入格式
+  'anthropic'    // 输出格式 (可选)
+)) {
+  // 自动转换为目标格式的流式事件
+  console.log(chunk);
+}
+
+// 响应格式自动匹配:
+// OpenAI:    data: {"choices":[{"delta":{"content":"..."}}]}
+// Anthropic: data: {"type":"content_block_delta","delta":{...}}`,
 };
 
-const features = [
-  { icon: Zap, title: "统一接口", desc: "一套API适配所有平台" },
-  { icon: Shield, title: "错误处理", desc: "智能重试 & 回退机制" },
-  { icon: GitBranch, title: "流式支持", desc: "原生SSE流式响应" },
-  { icon: Code2, title: "类型安全", desc: "完整TypeScript支持" },
+const coreAdvantages = [
+  {
+    icon: Shuffle,
+    title: "格式自由",
+    desc: "任意输入格式，任意输出格式",
+    items: ["OpenAI ⇆ Anthropic", "Google ⇆ Cohere", "任意组合转换"],
+  },
+  {
+    icon: HardDrive,
+    title: "本地优先",
+    desc: "优先路由到本地推理引擎，降低成本",
+    items: ["Ollama 集成", "vLLM 支持", "云端自动回退"],
+  },
+  {
+    icon: Shield,
+    title: "智能回退",
+    desc: "本地不可用自动切换到云端",
+    items: ["熔断器保护", "指数退避重试", "多级回退链"],
+  },
+  {
+    icon: Coins,
+    title: "成本优化",
+    desc: "按 Token 成本自动选择最优后端",
+    items: ["实时成本追踪", "预算控制", "用量统计"],
+  },
+  {
+    icon: Radio,
+    title: "流式支持",
+    desc: "任意格式都支持 SSE 流式响应",
+    items: ["格式自动转换", "AsyncIterable", "中断支持"],
+  },
+  {
+    icon: Code2,
+    title: "类型安全",
+    desc: "完整 TypeScript 类型定义",
+    items: ["类型推导", "IDE 补全", "编译时检查"],
+  },
 ];
 
 export default function Index() {
-  const [activeTab, setActiveTab] = useState("register");
+  const [activeTab, setActiveTab] = useState("gateway");
 
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
       <section className="relative overflow-hidden border-b border-border/40">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/10" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/15 via-transparent to-transparent" />
         
-        <div className="container relative mx-auto px-4 py-20 lg:py-28">
+        {/* Animated background elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -left-4 top-1/4 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+          <div className="absolute -right-4 top-1/2 h-96 w-96 rounded-full bg-primary/5 blur-3xl" />
+        </div>
+        
+        <div className="container relative mx-auto px-4 py-20 lg:py-32">
           <div className="flex flex-col items-center text-center">
-            <Badge variant="secondary" className="mb-6 px-4 py-1.5 text-sm font-medium">
-              <Brain className="mr-2 h-4 w-4" />
-              Unified AI SDK v1.0
+            <Badge variant="secondary" className="mb-6 px-4 py-1.5 text-sm font-medium border border-primary/20 bg-primary/5">
+              <ArrowLeftRight className="mr-2 h-4 w-4" />
+              Universal AI Gateway
             </Badge>
             
-            <h1 className="mb-6 text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-              多平台 AI 统一适配器
-              <span className="mt-2 block bg-gradient-to-r from-primary via-violet-500 to-purple-600 bg-clip-text text-transparent">
-                架构设计
+            <h1 className="mb-6 text-5xl font-bold tracking-tight text-foreground sm:text-6xl lg:text-7xl">
+              Any2Any
+              <span className="mt-2 block bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent">
+                API
               </span>
             </h1>
             
-            <p className="mb-8 max-w-2xl text-lg text-muted-foreground">
-              一个支持 OpenAI、Anthropic、Cerebras、GLM 等多个 AI 平台的统一适配器架构，
-              自适应各个 API 端点，为 Electron 本地应用和未来 AI 项目提供完美的底层支持。
+            <p className="mb-8 max-w-2xl text-lg text-muted-foreground lg:text-xl">
+              任意 AI API 格式互转网关。接收 OpenAI、Anthropic、Google、Cohere 任意格式，
+              智能路由到最优后端，返回您期望的<strong className="text-foreground">任意格式</strong>。
             </p>
             
-            <div className="flex flex-wrap justify-center gap-3">
-              {features.map((f, i) => (
-                <div key={i} className="flex items-center gap-2 rounded-full bg-muted/50 px-4 py-2 text-sm">
+            {/* Format flow visualization */}
+            <div className="mb-10 flex flex-wrap items-center justify-center gap-2 rounded-2xl border border-border/50 bg-card/50 px-6 py-4 backdrop-blur-sm">
+              <Badge variant="outline" className="border-emerald-500/50 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">OpenAI</Badge>
+              <Badge variant="outline" className="border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400">Anthropic</Badge>
+              <Badge variant="outline" className="border-blue-500/50 bg-blue-500/10 text-blue-600 dark:text-blue-400">Google</Badge>
+              <Badge variant="outline" className="border-purple-500/50 bg-purple-500/10 text-purple-600 dark:text-purple-400">Cohere</Badge>
+              <ArrowRight className="mx-2 h-5 w-5 text-muted-foreground" />
+              <div className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-1.5">
+                <Shuffle className="h-4 w-4 text-primary" />
+                <span className="text-sm font-semibold text-primary">Any2Any</span>
+              </div>
+              <ArrowRight className="mx-2 h-5 w-5 text-muted-foreground" />
+              <Badge variant="outline" className="border-primary/50 bg-primary/10 text-primary">任意格式</Badge>
+            </div>
+            
+            <div className="flex flex-wrap justify-center gap-4">
+              {[
+                { icon: Shuffle, label: "格式自由" },
+                { icon: Route, label: "智能路由" },
+                { icon: HardDrive, label: "本地优先" },
+                { icon: Radio, label: "流式支持" },
+              ].map((f, i) => (
+                <div key={i} className="flex items-center gap-2 rounded-full border border-border/50 bg-card/50 px-4 py-2 text-sm backdrop-blur-sm">
                   <f.icon className="h-4 w-4 text-primary" />
-                  <span className="font-medium">{f.title}</span>
+                  <span className="font-medium">{f.label}</span>
                 </div>
               ))}
             </div>
@@ -180,175 +224,307 @@ export default function Index() {
         </div>
       </section>
 
-      {/* Architecture Diagram */}
-      <section className="container mx-auto px-4 py-16">
-        <h2 className="mb-12 text-center text-3xl font-bold">
-          分层架构设计
+      {/* Any2Any Flow Diagram */}
+      <section className="container mx-auto px-4 py-16 lg:py-24">
+        <h2 className="mb-4 text-center text-3xl font-bold lg:text-4xl">
+          Any2Any 转换流程
         </h2>
+        <p className="mb-12 text-center text-muted-foreground">
+          双向格式转换：任意格式输入，任意格式输出
+        </p>
         
-        <div className="mx-auto max-w-4xl space-y-4">
-          {architectureLayers.map((layer, index) => (
-            <div key={layer.name} className="relative">
-              <Card className="overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
-                <div className={`absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b ${layer.gradient}`} />
-                <CardContent className="flex items-center gap-6 p-6 pl-8">
-                  <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${layer.gradient} text-white shadow-lg`}>
-                    <layer.icon className="h-7 w-7" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <h3 className="text-xl font-semibold">{layer.name}</h3>
-                      <span className="text-sm text-muted-foreground">/ {layer.nameEn}</span>
-                    </div>
-                    <p className="mt-1 text-muted-foreground">{layer.description}</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {layer.items.map((item, i) => (
-                        <Badge key={i} variant="outline" className="font-mono text-xs">
-                          {item}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
+        <div className="mx-auto max-w-5xl">
+          {/* Flow diagram */}
+          <div className="grid gap-4 lg:grid-cols-5">
+            {/* Input Column */}
+            <div className="space-y-3 lg:col-span-1">
+              <div className="mb-4 text-center text-sm font-semibold text-muted-foreground">INPUT</div>
+              {["OpenAI", "Anthropic", "Google", "Cohere"].map((format, i) => (
+                <Card key={format} className="border-border/50 bg-card/50 transition-all hover:border-primary/50 hover:shadow-md">
+                  <CardContent className="flex items-center gap-2 p-3">
+                    <div className={`h-2 w-2 rounded-full ${
+                      i === 0 ? "bg-emerald-500" : 
+                      i === 1 ? "bg-amber-500" : 
+                      i === 2 ? "bg-blue-500" : "bg-purple-500"
+                    }`} />
+                    <span className="text-sm font-medium">{format}</span>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            
+            {/* Arrow */}
+            <div className="flex items-center justify-center lg:col-span-1">
+              <ArrowRight className="h-8 w-8 rotate-90 text-muted-foreground/50 lg:rotate-0" />
+            </div>
+            
+            {/* Center - Unified + Router */}
+            <div className="space-y-4 lg:col-span-1">
+              <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10">
+                <CardContent className="p-4 text-center">
+                  <Layers className="mx-auto mb-2 h-8 w-8 text-primary" />
+                  <div className="font-semibold">Unified Format</div>
+                  <div className="text-xs text-muted-foreground">统一中间格式</div>
                 </CardContent>
               </Card>
-              {index < architectureLayers.length - 1 && (
-                <div className="ml-8 flex h-4 items-center justify-start">
-                  <div className="h-full w-0.5 bg-border" />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Supported Providers */}
-      <section className="border-y border-border/40 bg-muted/30 py-16">
-        <div className="container mx-auto px-4">
-          <h2 className="mb-12 text-center text-3xl font-bold">
-            支持的 AI 平台
-          </h2>
-          
-          <div className="mx-auto grid max-w-5xl grid-cols-2 gap-4 sm:grid-cols-4">
-            {providers.map((provider) => (
-              <Card key={provider.name} className="group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-                <div className={`absolute inset-x-0 top-0 h-1 ${provider.color}`} />
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-3">
-                    <div className={`h-3 w-3 rounded-full ${provider.color}`} />
-                    <h3 className="font-semibold">{provider.name}</h3>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-1">
-                    {provider.models.map((model, i) => (
-                      <span key={i} className="text-xs text-muted-foreground">
-                        {model}{i < provider.models.length - 1 && ", "}
-                      </span>
+              
+              <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10">
+                <CardContent className="p-4 text-center">
+                  <Route className="mx-auto mb-2 h-8 w-8 text-primary" />
+                  <div className="font-semibold">Smart Router</div>
+                  <div className="mt-2 flex flex-wrap justify-center gap-1">
+                    {routingStrategies.map((s) => (
+                      <Badge key={s.name} variant="outline" className="text-xs border-primary/30">
+                        {s.name}
+                      </Badge>
                     ))}
                   </div>
                 </CardContent>
               </Card>
+              
+              <Card className="border border-border/50 bg-card/50">
+                <CardContent className="p-4 text-center">
+                  <Server className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
+                  <div className="text-sm font-medium">Backends</div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    Cloud & Local
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            
+            {/* Arrow */}
+            <div className="flex items-center justify-center lg:col-span-1">
+              <ArrowRight className="h-8 w-8 rotate-90 text-muted-foreground/50 lg:rotate-0" />
+            </div>
+            
+            {/* Output Column */}
+            <div className="space-y-3 lg:col-span-1">
+              <div className="mb-4 text-center text-sm font-semibold text-muted-foreground">OUTPUT</div>
+              {["OpenAI", "Anthropic", "Google", "Cohere"].map((format, i) => (
+                <Card key={format} className="border-border/50 bg-card/50 transition-all hover:border-primary/50 hover:shadow-md">
+                  <CardContent className="flex items-center gap-2 p-3">
+                    <div className={`h-2 w-2 rounded-full ${
+                      i === 0 ? "bg-emerald-500" : 
+                      i === 1 ? "bg-amber-500" : 
+                      i === 2 ? "bg-blue-500" : "bg-purple-500"
+                    }`} />
+                    <span className="text-sm font-medium">{format}</span>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Endpoints Section */}
+      <section className="border-y border-border/40 bg-muted/30 py-16">
+        <div className="container mx-auto px-4">
+          <h2 className="mb-4 text-center text-3xl font-bold">
+            多格式端点
+          </h2>
+          <p className="mb-12 text-center text-muted-foreground">
+            一个网关，支持所有主流 AI API 格式
+          </p>
+          
+          <div className="mx-auto max-w-4xl space-y-3">
+            {endpoints.map((ep) => (
+              <Card key={ep.path} className="overflow-hidden transition-all hover:shadow-md">
+                <CardContent className="flex items-center gap-4 p-4">
+                  <Badge className="shrink-0 bg-primary/10 text-primary hover:bg-primary/20">POST</Badge>
+                  <code className="flex-1 font-mono text-sm">{ep.path}</code>
+                  <Badge variant="outline" className="shrink-0">{ep.format}</Badge>
+                  <span className="hidden text-sm text-muted-foreground sm:inline">{ep.desc}</span>
+                </CardContent>
+              </Card>
             ))}
+            
+            {/* X-Response-Format hint */}
+            <Card className="mt-6 border-dashed border-primary/30 bg-primary/5">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <Zap className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                  <div>
+                    <div className="font-semibold">跨格式响应</div>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      使用 <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">X-Response-Format</code> 请求头
+                      控制响应格式。例如：用 OpenAI 格式请求，返回 Anthropic 格式响应！
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Supported Platforms */}
+      <section className="container mx-auto px-4 py-16">
+        <h2 className="mb-4 text-center text-3xl font-bold">
+          支持的平台
+        </h2>
+        <p className="mb-12 text-center text-muted-foreground">
+          云端 API 和本地推理引擎，一个网关全部支持
+        </p>
+        
+        <div className="mx-auto max-w-5xl">
+          {/* Cloud APIs */}
+          <div className="mb-8">
+            <div className="mb-4 flex items-center gap-2">
+              <Globe className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold">Cloud APIs</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              {cloudProviders.map((provider) => (
+                <Card key={provider.name} className="group overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5">
+                  <div className="h-1" style={{ backgroundColor: provider.color }} />
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full" style={{ backgroundColor: provider.color }} />
+                      <span className="font-medium">{provider.name}</span>
+                    </div>
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      {provider.models.join(", ")}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+          
+          {/* Local Engines */}
+          <div>
+            <div className="mb-4 flex items-center gap-2">
+              <HardDrive className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold">Local Engines</h3>
+              <Badge variant="secondary" className="text-xs">本地优先</Badge>
+            </div>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {localEngines.map((engine) => (
+                <Card key={engine.name} className="group overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5">
+                  <CardContent className="flex items-center gap-4 p-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                      <engine.icon className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <div className="font-medium">{engine.name}</div>
+                      <div className="text-xs text-muted-foreground">{engine.desc}</div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
       {/* Code Examples */}
-      <section className="container mx-auto px-4 py-16">
-        <h2 className="mb-12 text-center text-3xl font-bold">
-          代码示例
-        </h2>
-        
-        <div className="mx-auto max-w-4xl">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="mb-6 grid w-full grid-cols-4">
-              <TabsTrigger value="register" className="text-sm">
-                注册提供商
-              </TabsTrigger>
-              <TabsTrigger value="chat" className="text-sm">
-                发送消息
-              </TabsTrigger>
-              <TabsTrigger value="fallback" className="text-sm">
-                智能回退
-              </TabsTrigger>
-              <TabsTrigger value="hooks" className="text-sm">
-                React Hooks
-              </TabsTrigger>
-            </TabsList>
-            
-            {Object.entries(codeExamples).map(([key, code]) => (
-              <TabsContent key={key} value={key}>
-                <Card className="overflow-hidden border-2">
-                  <CardHeader className="border-b bg-muted/50 py-3">
-                    <div className="flex items-center gap-2">
-                      <Terminal className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium text-muted-foreground">TypeScript</span>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <pre className="overflow-x-auto p-6 text-sm">
-                      <code className="text-foreground/90">{code}</code>
-                    </pre>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            ))}
-          </Tabs>
+      <section className="border-y border-border/40 bg-muted/30 py-16">
+        <div className="container mx-auto px-4">
+          <h2 className="mb-4 text-center text-3xl font-bold">
+            代码示例
+          </h2>
+          <p className="mb-12 text-center text-muted-foreground">
+            简洁的 API，强大的功能
+          </p>
+          
+          <div className="mx-auto max-w-4xl">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="mb-6 grid w-full grid-cols-2 lg:grid-cols-4">
+                <TabsTrigger value="gateway" className="text-sm">
+                  网关初始化
+                </TabsTrigger>
+                <TabsTrigger value="any2any" className="text-sm">
+                  Any2Any 转换
+                </TabsTrigger>
+                <TabsTrigger value="endpoints" className="text-sm">
+                  多端点
+                </TabsTrigger>
+                <TabsTrigger value="streaming" className="text-sm">
+                  流式响应
+                </TabsTrigger>
+              </TabsList>
+              
+              {Object.entries(codeExamples).map(([key, code]) => (
+                <TabsContent key={key} value={key}>
+                  <Card className="overflow-hidden border-2">
+                    <CardHeader className="border-b bg-card py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="flex gap-1.5">
+                          <div className="h-3 w-3 rounded-full bg-destructive/60" />
+                          <div className="h-3 w-3 rounded-full bg-yellow-500/60" />
+                          <div className="h-3 w-3 rounded-full bg-green-500/60" />
+                        </div>
+                        <span className="ml-2 text-sm font-medium text-muted-foreground">TypeScript</span>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <pre className="overflow-x-auto bg-muted/50 p-6 text-sm">
+                        <code className="text-foreground/90">{code}</code>
+                      </pre>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              ))}
+            </Tabs>
+          </div>
         </div>
       </section>
 
-      {/* Key Benefits */}
+      {/* Core Advantages */}
+      <section className="container mx-auto px-4 py-16">
+        <h2 className="mb-4 text-center text-3xl font-bold">
+          核心优势
+        </h2>
+        <p className="mb-12 text-center text-muted-foreground">
+          为多 AI 应用场景设计
+        </p>
+        
+        <div className="mx-auto grid max-w-5xl gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {coreAdvantages.map((item, i) => (
+            <Card key={i} className="group transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+              <CardHeader>
+                <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                  <item.icon className="h-5 w-5" />
+                </div>
+                <CardTitle className="text-lg">{item.title}</CardTitle>
+                <CardDescription>{item.desc}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2">
+                  {item.items.map((point, j) => (
+                    <li key={j} className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Check className="h-4 w-4 shrink-0 text-primary" />
+                      {point}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      {/* Routing Strategies */}
       <section className="border-t border-border/40 bg-muted/30 py-16">
         <div className="container mx-auto px-4">
-          <h2 className="mb-12 text-center text-3xl font-bold">
-            核心优势
+          <h2 className="mb-4 text-center text-3xl font-bold">
+            智能路由策略
           </h2>
+          <p className="mb-12 text-center text-muted-foreground">
+            根据需求自动选择最优后端
+          </p>
           
-          <div className="mx-auto grid max-w-5xl gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {[
-              {
-                title: "统一类型定义",
-                desc: "Message、Request、Response 等类型统一，切换平台无需改代码",
-                items: ["TypeScript 完整支持", "类型推导友好", "IDE 自动补全"],
-              },
-              {
-                title: "智能适配转换",
-                desc: "自动处理各平台 API 差异，如 Anthropic 的 messages 格式转换",
-                items: ["请求格式自动转换", "响应格式统一", "参数差异兼容"],
-              },
-              {
-                title: "企业级可靠性",
-                desc: "内置重试、超时、错误处理，生产环境开箱即用",
-                items: ["指数退避重试", "速率限制处理", "多提供商回退"],
-              },
-              {
-                title: "流式原生支持",
-                desc: "SSE 流解析器支持所有平台的实时流式响应",
-                items: ["AsyncIterable API", "分块解析", "中断支持"],
-              },
-              {
-                title: "Electron 友好",
-                desc: "纯 TypeScript 实现，完美支持 Electron 主进程/渲染进程",
-                items: ["无 Node 特定依赖", "IPC 通信友好", "安全存储集成"],
-              },
-              {
-                title: "扩展性设计",
-                desc: "BaseAdapter 抽象，添加新平台只需继承并实现少量方法",
-                items: ["适配器模式", "自定义适配器", "插件化架构"],
-              },
-            ].map((item, i) => (
-              <Card key={i} className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-                <CardHeader>
-                  <CardTitle className="text-lg">{item.title}</CardTitle>
-                  <CardDescription>{item.desc}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-2">
-                    {item.items.map((point, j) => (
-                      <li key={j} className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Check className="h-4 w-4 text-primary" />
-                        {point}
-                      </li>
-                    ))}
-                  </ul>
+          <div className="mx-auto grid max-w-4xl grid-cols-2 gap-4 lg:grid-cols-4">
+            {routingStrategies.map((strategy) => (
+              <Card key={strategy.name} className="text-center transition-all hover:shadow-md hover:-translate-y-0.5">
+                <CardContent className="p-6">
+                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+                    <strategy.icon className="h-6 w-6 text-primary" />
+                  </div>
+                  <div className="font-semibold">{strategy.name}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">{strategy.desc}</div>
                 </CardContent>
               </Card>
             ))}
@@ -358,8 +534,13 @@ export default function Index() {
 
       {/* Footer */}
       <footer className="border-t border-border/40 py-8">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>Unified AI SDK - 为多 AI 应用提供完美的底层架构支持</p>
+        <div className="container mx-auto px-4 text-center">
+          <div className="mb-2 text-2xl font-bold">
+            Any2Any<span className="text-primary"> API</span>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            任意 AI API 格式互转网关 — 为多 AI 应用提供完美的底层架构支持
+          </p>
         </div>
       </footer>
     </div>

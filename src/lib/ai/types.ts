@@ -186,18 +186,151 @@ export interface ModelInfo {
   };
 }
 
+// ==================== 嵌入类型 ====================
+
+export interface EmbeddingRequest {
+  model: string;
+  input: string | string[];
+  dimensions?: number;
+  encoding_format?: 'float' | 'base64';
+  user?: string;
+}
+
+export interface EmbeddingData {
+  object: 'embedding';
+  embedding: number[];
+  index: number;
+}
+
+export interface EmbeddingResponse {
+  object: 'list';
+  model: string;
+  data: EmbeddingData[];
+  usage: {
+    prompt_tokens: number;
+    total_tokens: number;
+  };
+}
+
+// ==================== 图像生成类型 ====================
+
+export type ImageSize = '256x256' | '512x512' | '1024x1024' | '1792x1024' | '1024x1792';
+export type ImageQuality = 'standard' | 'hd' | 'low' | 'medium' | 'high';
+export type ImageStyle = 'vivid' | 'natural';
+
+export interface ImageGenerationRequest {
+  model: string;
+  prompt: string;
+  n?: number;
+  size?: ImageSize;
+  quality?: ImageQuality;
+  style?: ImageStyle;
+  response_format?: 'url' | 'b64_json';
+  user?: string;
+}
+
+export interface GeneratedImage {
+  url?: string;
+  b64_json?: string;
+  revised_prompt?: string;
+}
+
+export interface ImageGenerationResponse {
+  created: number;
+  data: GeneratedImage[];
+}
+
+// ==================== 语音合成类型 ====================
+
+export type SpeechVoice = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer' | string;
+export type SpeechFormat = 'mp3' | 'opus' | 'aac' | 'flac' | 'wav' | 'pcm';
+
+export interface SpeechRequest {
+  model: string;
+  input: string;
+  voice: SpeechVoice;
+  response_format?: SpeechFormat;
+  speed?: number;
+}
+
+export interface SpeechResponse {
+  audio: ArrayBuffer;
+  contentType: string;
+}
+
+// ==================== 语音转文字类型 ====================
+
+export type TranscriptionFormat = 'json' | 'text' | 'srt' | 'verbose_json' | 'vtt';
+
+export interface TranscriptionRequest {
+  model: string;
+  file: Blob | ArrayBuffer | File;
+  language?: string;
+  prompt?: string;
+  response_format?: TranscriptionFormat;
+  temperature?: number;
+  timestamp_granularities?: ('word' | 'segment')[];
+}
+
+export interface TranscriptionWord {
+  word: string;
+  start: number;
+  end: number;
+}
+
+export interface TranscriptionSegment {
+  id: number;
+  seek: number;
+  start: number;
+  end: number;
+  text: string;
+  tokens: number[];
+  temperature: number;
+  avg_logprob: number;
+  compression_ratio: number;
+  no_speech_prob: number;
+}
+
+export interface TranscriptionResponse {
+  text: string;
+  language?: string;
+  duration?: number;
+  words?: TranscriptionWord[];
+  segments?: TranscriptionSegment[];
+}
+
+// ==================== 适配器能力 ====================
+
+export interface AdapterCapabilities {
+  chat: boolean;
+  streaming: boolean;
+  embedding: boolean;
+  imageGeneration: boolean;
+  speech: boolean;
+  transcription: boolean;
+  vision: boolean;
+  tools: boolean;
+}
+
 // ==================== 适配器接口 ====================
 
 export interface AIAdapter {
   provider: AIProvider;
   
-  // 核心方法
+  // 核心方法 - 文本生成
   chat(request: ChatCompletionRequest): Promise<ChatCompletionResponse>;
   chatStream(request: ChatCompletionRequest): AsyncIterable<StreamChunk>;
+  
+  // 全模态方法 - 可选
+  embed?(request: EmbeddingRequest): Promise<EmbeddingResponse>;
+  generateImage?(request: ImageGenerationRequest): Promise<ImageGenerationResponse>;
+  speak?(request: SpeechRequest): Promise<SpeechResponse>;
+  transcribe?(request: TranscriptionRequest): Promise<TranscriptionResponse>;
   
   // 工具方法
   listModels(): Promise<ModelInfo[]>;
   validateApiKey(): Promise<boolean>;
+  getCapabilities(): AdapterCapabilities;
   
   // 配置
   getConfig(): ProviderConfig;

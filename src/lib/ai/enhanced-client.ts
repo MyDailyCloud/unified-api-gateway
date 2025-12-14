@@ -12,6 +12,15 @@ import {
   StreamChunk,
   ModelInfo,
   AIError,
+  AdapterCapabilities,
+  EmbeddingRequest,
+  EmbeddingResponse,
+  ImageGenerationRequest,
+  ImageGenerationResponse,
+  SpeechRequest,
+  SpeechResponse,
+  TranscriptionRequest,
+  TranscriptionResponse,
 } from './types';
 import { AIClient, AIClientConfig } from './client';
 import { MiddlewareManager, MiddlewareContext, generateRequestId } from './middleware';
@@ -357,6 +366,148 @@ export class EnhancedAIClient extends AIClient {
       this.diagnostics = new AIDiagnostics(this.getAdaptersMap());
     }
     return this.diagnostics.getFastestProvider();
+  }
+  
+  // ==================== 全模态增强方法 ====================
+  
+  /**
+   * 增强的文本嵌入
+   */
+  async embed(
+    request: EmbeddingRequest,
+    provider?: AIProvider
+  ): Promise<EmbeddingResponse> {
+    const targetProvider = provider || this.getProviders()[0];
+    const requestId = generateRequestId();
+    const startTime = Date.now();
+    const context: MiddlewareContext = {
+      provider: targetProvider,
+      requestId,
+      startTime,
+    };
+    
+    try {
+      await this.middleware.executeRequest({ model: request.model, messages: [] }, context);
+      const response = await super.embed(request, targetProvider);
+      await this.middleware.executeComplete({
+        ...context,
+        duration: Date.now() - startTime,
+        success: true,
+      });
+      return response;
+    } catch (error) {
+      await this.middleware.executeComplete({
+        ...context,
+        duration: Date.now() - startTime,
+        success: false,
+      });
+      throw error;
+    }
+  }
+  
+  /**
+   * 增强的图像生成
+   */
+  async generateImage(
+    request: ImageGenerationRequest,
+    provider?: AIProvider
+  ): Promise<ImageGenerationResponse> {
+    const targetProvider = provider || this.getProviders()[0];
+    const requestId = generateRequestId();
+    const startTime = Date.now();
+    const context: MiddlewareContext = {
+      provider: targetProvider,
+      requestId,
+      startTime,
+    };
+    
+    try {
+      await this.middleware.executeRequest({ model: request.model, messages: [] }, context);
+      const response = await super.generateImage(request, targetProvider);
+      await this.middleware.executeComplete({
+        ...context,
+        duration: Date.now() - startTime,
+        success: true,
+      });
+      return response;
+    } catch (error) {
+      await this.middleware.executeComplete({
+        ...context,
+        duration: Date.now() - startTime,
+        success: false,
+      });
+      throw error;
+    }
+  }
+  
+  /**
+   * 增强的语音合成
+   */
+  async speak(
+    request: SpeechRequest,
+    provider?: AIProvider
+  ): Promise<SpeechResponse> {
+    const targetProvider = provider || this.getProviders()[0];
+    const requestId = generateRequestId();
+    const startTime = Date.now();
+    const context: MiddlewareContext = {
+      provider: targetProvider,
+      requestId,
+      startTime,
+    };
+    
+    try {
+      await this.middleware.executeRequest({ model: request.model, messages: [] }, context);
+      const response = await super.speak(request, targetProvider);
+      await this.middleware.executeComplete({
+        ...context,
+        duration: Date.now() - startTime,
+        success: true,
+      });
+      return response;
+    } catch (error) {
+      await this.middleware.executeComplete({
+        ...context,
+        duration: Date.now() - startTime,
+        success: false,
+      });
+      throw error;
+    }
+  }
+  
+  /**
+   * 增强的语音识别
+   */
+  async transcribe(
+    request: TranscriptionRequest,
+    provider?: AIProvider
+  ): Promise<TranscriptionResponse> {
+    const targetProvider = provider || this.getProviders()[0];
+    const requestId = generateRequestId();
+    const startTime = Date.now();
+    const context: MiddlewareContext = {
+      provider: targetProvider,
+      requestId,
+      startTime,
+    };
+    
+    try {
+      await this.middleware.executeRequest({ model: request.model, messages: [] }, context);
+      const response = await super.transcribe(request, targetProvider);
+      await this.middleware.executeComplete({
+        ...context,
+        duration: Date.now() - startTime,
+        success: true,
+      });
+      return response;
+    } catch (error) {
+      await this.middleware.executeComplete({
+        ...context,
+        duration: Date.now() - startTime,
+        success: false,
+      });
+      throw error;
+    }
   }
 }
 

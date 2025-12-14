@@ -12,6 +12,7 @@ import {
   ProviderConfig,
   ModelInfo,
   Message,
+  AdapterCapabilities,
 } from '../types';
 
 export class AnthropicAdapter extends BaseAdapter {
@@ -25,6 +26,21 @@ export class AnthropicAdapter extends BaseAdapter {
       provider: 'anthropic',
       baseURL: config.baseURL || 'https://api.anthropic.com',
     });
+  }
+  
+  // ==================== 能力声明 ====================
+  
+  getCapabilities(): AdapterCapabilities {
+    return {
+      chat: true,
+      streaming: true,
+      embedding: false,
+      imageGeneration: false,
+      speech: false,
+      transcription: false,
+      vision: true,
+      tools: true,
+    };
   }
   
   protected buildHeaders(): Record<string, string> {

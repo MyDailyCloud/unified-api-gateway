@@ -12,6 +12,15 @@ import {
   StreamChunk,
   ModelInfo,
   AIError,
+  AdapterCapabilities,
+  EmbeddingRequest,
+  EmbeddingResponse,
+  ImageGenerationRequest,
+  ImageGenerationResponse,
+  SpeechRequest,
+  SpeechResponse,
+  TranscriptionRequest,
+  TranscriptionResponse,
 } from './types';
 import {
   OpenAIAdapter,
@@ -199,6 +208,88 @@ export class AIClient {
       'ALL_PROVIDERS_FAILED',
       'custom'
     );
+  }
+  
+  // ==================== 全模态方法 ====================
+  
+  /**
+   * 文本嵌入
+   */
+  async embed(
+    request: EmbeddingRequest,
+    provider?: AIProvider
+  ): Promise<EmbeddingResponse> {
+    const adapter = this.getAdapter(provider);
+    if (!adapter.embed) {
+      throw new AIError(
+        `Provider ${adapter.provider} does not support embedding`,
+        'NOT_SUPPORTED',
+        adapter.provider
+      );
+    }
+    return adapter.embed(request);
+  }
+  
+  /**
+   * 图像生成
+   */
+  async generateImage(
+    request: ImageGenerationRequest,
+    provider?: AIProvider
+  ): Promise<ImageGenerationResponse> {
+    const adapter = this.getAdapter(provider);
+    if (!adapter.generateImage) {
+      throw new AIError(
+        `Provider ${adapter.provider} does not support image generation`,
+        'NOT_SUPPORTED',
+        adapter.provider
+      );
+    }
+    return adapter.generateImage(request);
+  }
+  
+  /**
+   * 语音合成
+   */
+  async speak(
+    request: SpeechRequest,
+    provider?: AIProvider
+  ): Promise<SpeechResponse> {
+    const adapter = this.getAdapter(provider);
+    if (!adapter.speak) {
+      throw new AIError(
+        `Provider ${adapter.provider} does not support speech synthesis`,
+        'NOT_SUPPORTED',
+        adapter.provider
+      );
+    }
+    return adapter.speak(request);
+  }
+  
+  /**
+   * 语音转文字
+   */
+  async transcribe(
+    request: TranscriptionRequest,
+    provider?: AIProvider
+  ): Promise<TranscriptionResponse> {
+    const adapter = this.getAdapter(provider);
+    if (!adapter.transcribe) {
+      throw new AIError(
+        `Provider ${adapter.provider} does not support transcription`,
+        'NOT_SUPPORTED',
+        adapter.provider
+      );
+    }
+    return adapter.transcribe(request);
+  }
+  
+  /**
+   * 获取提供商能力
+   */
+  getCapabilities(provider?: AIProvider): AdapterCapabilities {
+    const adapter = this.getAdapter(provider);
+    return adapter.getCapabilities();
   }
   
   /**

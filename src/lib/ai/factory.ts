@@ -1,11 +1,12 @@
 /**
- * AI Provider 工厂函数
- * AI Provider Factory Functions
+ * AI Provider 工厂函数 - 全模态支持
+ * AI Provider Factory Functions - Full Multimodal Support
  * 
  * 借鉴 Vercel AI SDK 的设计模式，提供类似 createOpenAI 的工厂函数
  */
 
-import type { ProviderConfig, ModelInfo } from './types';
+import type { ProviderConfig, AIProvider } from './types';
+import { AIClient } from './client';
 
 // ============= 配置类型 =============
 
@@ -280,4 +281,114 @@ export function createCustomProvider(config: GenericFactoryConfig & { name?: str
       headers: config.headers,
     },
   });
+}
+
+// ============= 全模态工厂对象 =============
+
+/**
+ * 全模态提供商配置
+ */
+export interface MultimodalProviderConfig {
+  apiKey: string;
+  baseURL?: string;
+  defaultModel?: string;
+  organization?: string;
+}
+
+/**
+ * 全模态模型引用
+ */
+export interface MultimodalModelRef {
+  chat: (modelId?: string) => ModelReference;
+  embedding: (modelId?: string) => ModelReference;
+  image: (modelId?: string) => ModelReference;
+  speech: (modelId?: string) => ModelReference;
+  transcription: (modelId?: string) => ModelReference;
+}
+
+/**
+ * 创建全模态 OpenAI 提供商
+ * 
+ * @example
+ * const openai = createMultimodalOpenAI({ apiKey: 'sk-xxx' });
+ * 
+ * // 文本生成
+ * const chatModel = openai.chat('gpt-4o');
+ * 
+ * // 文本嵌入
+ * const embedModel = openai.embedding('text-embedding-3-small');
+ * 
+ * // 图像生成
+ * const imageModel = openai.image('dall-e-3');
+ * 
+ * // 语音合成
+ * const speechModel = openai.speech('tts-1');
+ * 
+ * // 语音识别
+ * const transcriptionModel = openai.transcription('whisper-1');
+ */
+export function createMultimodalOpenAI(config: MultimodalProviderConfig): MultimodalModelRef {
+  const baseConfig: ProviderConfig = {
+    provider: 'openai',
+    apiKey: config.apiKey,
+    baseURL: config.baseURL || 'https://api.openai.com/v1',
+    headers: config.organization ? { 'OpenAI-Organization': config.organization } : undefined,
+  };
+  
+  return {
+    chat: (modelId?: string): ModelReference => ({
+      provider: 'openai',
+      modelId: modelId || config.defaultModel || 'gpt-4o-mini',
+      config: baseConfig,
+    }),
+    embedding: (modelId?: string): ModelReference => ({
+      provider: 'openai',
+      modelId: modelId || 'text-embedding-3-small',
+      config: baseConfig,
+    }),
+    image: (modelId?: string): ModelReference => ({
+      provider: 'openai',
+      modelId: modelId || 'dall-e-3',
+      config: baseConfig,
+    }),
+    speech: (modelId?: string): ModelReference => ({
+      provider: 'openai',
+      modelId: modelId || 'tts-1',
+      config: baseConfig,
+    }),
+    transcription: (modelId?: string): ModelReference => ({
+      provider: 'openai',
+      modelId: modelId || 'whisper-1',
+      config: baseConfig,
+    }),
+  };
+}
+
+/**
+ * 创建全模态 Google 提供商
+ */
+export function createMultimodalGoogle(config: MultimodalProviderConfig): Partial<MultimodalModelRef> {
+  const baseConfig: ProviderConfig = {
+    provider: 'google',
+    apiKey: config.apiKey,
+    baseURL: config.baseURL || 'https://generativelanguage.googleapis.com/v1beta',
+  };
+  
+  return {
+    chat: (modelId?: string): ModelReference => ({
+      provider: 'google',
+      modelId: modelId || config.defaultModel || 'gemini-2.5-pro',
+      config: baseConfig,
+    }),
+    embedding: (modelId?: string): ModelReference => ({
+      provider: 'google',
+      modelId: modelId || 'text-embedding-004',
+      config: baseConfig,
+    }),
+    image: (modelId?: string): ModelReference => ({
+      provider: 'google',
+      modelId: modelId || 'gemini-2.0-flash-exp',
+      config: baseConfig,
+    }),
+  };
 }

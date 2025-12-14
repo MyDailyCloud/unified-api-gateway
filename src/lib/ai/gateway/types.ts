@@ -9,7 +9,27 @@ import type { AIProvider, ChatCompletionRequest, ChatCompletionResponse, StreamC
 // Format Types
 // ============================================================================
 
-export type RequestFormat = 'openai' | 'anthropic' | 'google' | 'cohere' | 'mistral';
+export type RequestFormat = 
+  | 'openai' 
+  | 'anthropic' 
+  | 'google' 
+  | 'cohere' 
+  | 'mistral'
+  | 'ollama'       // Native Ollama API
+  | 'llamacpp'     // Native llama.cpp API
+  // OpenAI-compatible formats (use openaiNormalizer)
+  | 'vllm'
+  | 'lmstudio'
+  | 'deepseek'
+  | 'moonshot'
+  | 'qwen'
+  | 'glm'
+  | 'groq'
+  | 'together'
+  | 'openrouter'
+  | 'azure'
+  | 'cerebras';
+
 export type ResponseFormat = RequestFormat;
 
 // ============================================================================

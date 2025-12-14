@@ -46,6 +46,32 @@ const endpoints = [
   { path: "/v1/cohere/chat", format: "Cohere", desc: "Chat API" },
 ];
 
+// Independent formats with dedicated normalizers
+const independentFormats = [
+  { id: 'openai', name: 'OpenAI', borderColor: 'border-emerald-500/50', bgColor: 'bg-emerald-500/10', textColor: 'text-emerald-600 dark:text-emerald-400' },
+  { id: 'anthropic', name: 'Anthropic', borderColor: 'border-amber-500/50', bgColor: 'bg-amber-500/10', textColor: 'text-amber-600 dark:text-amber-400' },
+  { id: 'google', name: 'Google', borderColor: 'border-blue-500/50', bgColor: 'bg-blue-500/10', textColor: 'text-blue-600 dark:text-blue-400' },
+  { id: 'cohere', name: 'Cohere', borderColor: 'border-purple-500/50', bgColor: 'bg-purple-500/10', textColor: 'text-purple-600 dark:text-purple-400' },
+  { id: 'ollama', name: 'Ollama', borderColor: 'border-orange-500/50', bgColor: 'bg-orange-500/10', textColor: 'text-orange-600 dark:text-orange-400' },
+  { id: 'llamacpp', name: 'llama.cpp', borderColor: 'border-slate-500/50', bgColor: 'bg-slate-500/10', textColor: 'text-slate-600 dark:text-slate-400' },
+];
+
+// OpenAI-compatible formats (use openaiNormalizer)
+const openaiCompatibleFormats = [
+  { id: 'mistral', name: 'Mistral' },
+  { id: 'vllm', name: 'vLLM' },
+  { id: 'lmstudio', name: 'LM Studio' },
+  { id: 'deepseek', name: 'DeepSeek' },
+  { id: 'moonshot', name: 'Moonshot' },
+  { id: 'qwen', name: 'Qwen' },
+  { id: 'glm', name: 'GLM' },
+  { id: 'groq', name: 'Groq' },
+  { id: 'together', name: 'Together' },
+  { id: 'openrouter', name: 'OpenRouter' },
+  { id: 'azure', name: 'Azure OpenAI' },
+  { id: 'cerebras', name: 'Cerebras' },
+];
+
 const routingStrategies = [
   { name: "Model Match", icon: Route, desc: "按模型名自动选择后端" },
   { name: "Cost Optimized", icon: Coins, desc: "优先选择成本最低后端" },
@@ -314,6 +340,98 @@ export default function Index() {
                 </Card>
               ))}
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Conversion Matrix Section */}
+      <section className="border-y border-border/40 bg-muted/30 py-16">
+        <div className="container mx-auto px-4">
+          <h2 className="mb-4 text-center text-3xl font-bold lg:text-4xl">
+            转换矩阵
+          </h2>
+          <p className="mb-12 text-center text-muted-foreground">
+            6 种独立格式 × 6 = <strong className="text-foreground">36</strong> 种转换组合，全部支持
+          </p>
+          
+          <div className="mx-auto max-w-4xl overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr>
+                  <th className="p-3 text-left text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <span className="font-medium">INPUT</span>
+                      <ArrowRight className="h-3 w-3" />
+                      <span className="font-medium">OUTPUT</span>
+                    </div>
+                  </th>
+                  {independentFormats.map((f) => (
+                    <th key={f.id} className="p-3 text-center">
+                      <Badge 
+                        variant="outline" 
+                        className={`${f.borderColor} ${f.bgColor} ${f.textColor}`}
+                      >
+                        {f.name}
+                      </Badge>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {independentFormats.map((input) => (
+                  <tr key={input.id} className="border-t border-border/50 transition-colors hover:bg-muted/50">
+                    <td className="p-3">
+                      <Badge 
+                        variant="outline" 
+                        className={`${input.borderColor} ${input.bgColor} ${input.textColor}`}
+                      >
+                        {input.name}
+                      </Badge>
+                    </td>
+                    {independentFormats.map((output) => (
+                      <td key={output.id} className="p-3 text-center">
+                        <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 transition-colors hover:bg-primary/20">
+                          <Check className="h-4 w-4 text-primary" />
+                        </div>
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          
+          {/* OpenAI Compatible Formats */}
+          <div className="mx-auto mt-12 max-w-4xl">
+            <div className="rounded-xl border border-border/50 bg-card/50 p-6">
+              <div className="mb-4 flex items-center gap-2">
+                <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/50" variant="outline">
+                  OpenAI 兼容
+                </Badge>
+                <span className="text-sm text-muted-foreground">
+                  以下格式使用 OpenAI 标准，自动支持与所有格式互转
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {openaiCompatibleFormats.map((f) => (
+                  <Badge 
+                    key={f.id} 
+                    variant="outline" 
+                    className="border-border bg-background/50"
+                  >
+                    {f.name}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          {/* Matrix Stats */}
+          <div className="mt-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              ✓ 总计 <strong className="text-foreground">{independentFormats.length + openaiCompatibleFormats.length}</strong> 种格式 
+              • <strong className="text-foreground">{(independentFormats.length + openaiCompatibleFormats.length) ** 2}</strong> 种转换组合
+            </p>
           </div>
         </div>
       </section>

@@ -3,13 +3,64 @@
  * Universal AI API Type Definitions
  */
 
+// ==================== 多模态内容类型 ====================
+
+export type ContentPartType = 'text' | 'image_url' | 'audio' | 'video' | 'file';
+
+export interface TextContentPart {
+  type: 'text';
+  text: string;
+}
+
+export interface ImageContentPart {
+  type: 'image_url';
+  image_url: {
+    url: string;
+    detail?: 'auto' | 'low' | 'high';
+  };
+}
+
+export interface AudioContentPart {
+  type: 'audio';
+  audio: {
+    data: string;
+    format: 'wav' | 'mp3' | 'ogg' | 'flac' | 'webm';
+  };
+}
+
+export interface VideoContentPart {
+  type: 'video';
+  video: {
+    url: string;
+    duration?: number;
+  };
+}
+
+export interface FileContentPart {
+  type: 'file';
+  file: {
+    url: string;
+    mimeType: string;
+    name?: string;
+  };
+}
+
+export type ContentPart = 
+  | TextContentPart 
+  | ImageContentPart 
+  | AudioContentPart 
+  | VideoContentPart 
+  | FileContentPart;
+
+export type MessageContent = string | ContentPart[];
+
 // ==================== 基础消息类型 ====================
 
 export type MessageRole = 'system' | 'user' | 'assistant' | 'tool';
 
 export interface Message {
   role: MessageRole;
-  content: string;
+  content: MessageContent;
   name?: string;
   tool_call_id?: string;
   tool_calls?: ToolCall[];

@@ -46,3 +46,57 @@ export {
   type ProviderRegistryConfig,
   type ModelRouter,
 } from './registry';
+
+// 中间件
+export {
+  MiddlewareManager,
+  createMiddlewareManager,
+  createLoggingMiddleware,
+  createPerformanceMiddleware,
+  createRetryMiddleware,
+  generateRequestId,
+  type AIMiddleware,
+  type MiddlewareContext,
+} from './middleware';
+
+// 缓存
+export {
+  MemoryCache,
+  LocalStorageCache,
+  createCache,
+  defaultCacheKeyGenerator,
+  type AICache,
+  type CacheConfig,
+  type CacheEntry,
+  type CacheStats,
+} from './cache';
+
+// 请求队列
+export {
+  RequestQueue,
+  ProviderRateLimiter,
+  createRequestQueue,
+  createProviderRateLimiter,
+  RATE_LIMIT_PRESETS,
+  type QueueConfig,
+  type QueuedRequest,
+  type QueueStats,
+} from './queue';
+
+// 成本追踪
+export {
+  CostTracker,
+  createCostTracker,
+  formatCost,
+  formatTokens,
+  MODEL_PRICING,
+  type TokenUsage,
+  type CostRecord,
+  type UsageStats,
+  type BillingReport,
+  type CostTrackerConfig,
+  type PricingInfo,
+} from './cost-tracker';
+
+// Electron 集成
+export * from './electron';

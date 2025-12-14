@@ -299,3 +299,253 @@ router.route('deepseek-chat');    // { provider: 'deepseek', model: 'deepseek-ch
 - **回退机制**: 多提供商自动故障转移
 - **工厂模式**: 类似 Vercel AI SDK 的工厂函数
 - **可扩展**: 易于添加新的提供商适配器
+
+## 高级功能 / Advanced Features
+
+### 多模态支持 / Multimodal Support
+
+```typescript
+import type { Message, ContentPart } from '@/lib/ai';
+
+// 发送包含图片的消息
+const message: Message = {
+  role: 'user',
+  content: [
+    { type: 'text', text: 'What is in this image?' },
+    { 
+      type: 'image_url', 
+      image_url: { 
+        url: 'data:image/png;base64,...',
+        detail: 'high' 
+      } 
+    },
+  ],
+};
+```
+
+### 中间件系统 / Middleware System
+
+```typescript
+import { 
+  createMiddlewareManager, 
+  createLoggingMiddleware,
+  createPerformanceMiddleware 
+} from '@/lib/ai';
+
+const middleware = createMiddlewareManager();
+
+// 添加日志中间件
+middleware.use(createLoggingMiddleware({
+  logRequest: true,
+  logResponse: true,
+  logErrors: true,
+}));
+
+// 添加性能监控
+middleware.use(createPerformanceMiddleware({
+  slowThreshold: 5000,
+  onSlowRequest: (ctx) => console.warn(`Slow request: ${ctx.duration}ms`),
+}));
+
+// 自定义中间件
+middleware.use({
+  name: 'custom',
+  onRequest: (request, context) => {
+    console.log(`Request ID: ${context.requestId}`);
+    return request;
+  },
+  onComplete: (context) => {
+    console.log(`Completed in ${context.duration}ms`);
+  },
+});
+```
+
+### 响应缓存 / Response Caching
+
+```typescript
+import { createCache, defaultCacheKeyGenerator } from '@/lib/ai';
+
+// 创建内存缓存
+const cache = createCache({
+  enabled: true,
+  ttl: 5 * 60 * 1000, // 5分钟
+  maxSize: 100,
+  storage: 'memory',
+});
+
+// 检查缓存
+const cacheKey = defaultCacheKeyGenerator(request);
+const cached = await cache.get(cacheKey);
+if (cached) {
+  return cached;
+}
+
+// 存储响应
+await cache.set(cacheKey, response);
+
+// 查看统计
+console.log(cache.getStats()); // { hits, misses, size, hitRate }
+```
+
+### 请求队列和速率限制 / Request Queue & Rate Limiting
+
+```typescript
+import { 
+  createRequestQueue, 
+  createProviderRateLimiter,
+  RATE_LIMIT_PRESETS 
+} from '@/lib/ai';
+
+// 创建请求队列
+const queue = createRequestQueue({
+  maxConcurrent: 5,
+  rateLimit: { requests: 60, perMilliseconds: 60000 },
+  timeout: 30000,
+});
+
+queue.setExecutor((request, provider) => client.chat(request, provider));
+const response = await queue.enqueue(request, 'openai');
+
+// 或使用提供商级别的限制器
+const limiter = createProviderRateLimiter();
+limiter.setProviderConfig('openai', RATE_LIMIT_PRESETS.openai);
+
+const response = await limiter.request(
+  request,
+  'openai',
+  (req, prov) => client.chat(req, prov)
+);
+```
+
+### 成本追踪 / Cost Tracking
+
+```typescript
+import { createCostTracker, formatCost, formatTokens } from '@/lib/ai';
+
+const tracker = createCostTracker({
+  enabled: true,
+  budgetWarning: 50, // $50 警告
+  budgetLimit: 100,  // $100 限制
+  onBudgetWarning: (current, limit) => {
+    console.warn(`Budget warning: ${formatCost(current)} / ${formatCost(limit)}`);
+  },
+});
+
+// 追踪响应
+const record = tracker.track(response, 'openai');
+console.log(`Cost: ${formatCost(record.cost)}`);
+
+// 获取使用统计
+const usage = tracker.getUsage('openai');
+console.log(`Total tokens: ${formatTokens(usage.totalTokens.totalTokens)}`);
+console.log(`Total cost: ${formatCost(usage.totalCost)}`);
+
+// 生成账单报告
+const report = tracker.getBilling(
+  new Date('2024-01-01'),
+  new Date('2024-01-31')
+);
+console.log(report.byProvider, report.dailyBreakdown);
+```
+
+### Electron IPC 集成 / Electron IPC Integration
+
+```typescript
+// ===== 主进程 (main.ts) =====
+import { ipcMain } from 'electron';
+import { AIClient, AI_IPC_CHANNELS } from '@/lib/ai';
+
+const client = new AIClient();
+
+// 从安全存储加载 API Keys
+const keys = await safeStorage.loadKeys();
+keys.forEach(k => client.registerProvider(k));
+
+// 处理 IPC 请求
+ipcMain.handle(AI_IPC_CHANNELS.CHAT, async (event, { request, provider }) => {
+  try {
+    const response = await client.chat(request, provider);
+    return { success: true, data: response };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// ===== Preload 脚本 (preload.ts) =====
+import { contextBridge, ipcRenderer } from 'electron';
+import { initPreloadAI } from '@/lib/ai/electron/preload';
+
+const aiAPI = initPreloadAI(ipcRenderer);
+contextBridge.exposeInMainWorld('electron', { ai: aiAPI });
+
+// ===== 渲染进程 (renderer.ts) =====
+// 发送请求
+const response = await window.electron?.ai.chat({
+  model: 'gpt-4o',
+  messages: [{ role: 'user', content: 'Hello!' }],
+}, 'openai');
+
+// 流式请求
+const requestId = window.electron?.ai.chatStream({
+  model: 'gpt-4o',
+  messages: [{ role: 'user', content: 'Tell me a story' }],
+}, 'openai');
+
+window.electron?.ai.onStreamChunk((chunk) => {
+  console.log(chunk.choices[0]?.delta?.content);
+});
+```
+
+## 完整架构图 / Complete Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         Electron 主进程 (Main Process)                        │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │  安全存储 (Secure Storage) - API Keys 加密存储                          │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                              ↓ IPC Bridge                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                           应用层 (Application Layer)                          │
+│  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐                │
+│  │  React Hooks   │  │   Components   │  │ Error Boundary │                │
+│  │ useAI / useChat│  │   ChatUI etc   │  │ AIErrorBoundary│                │
+│  └────────────────┘  └────────────────┘  └────────────────┘                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                           增强层 (Enhancement Layer)                          │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
+│  │  Middleware │  │    Cache    │  │    Queue    │  │Cost Tracker │        │
+│  │ 日志/监控   │  │  响应缓存   │  │  速率限制   │  │  成本追踪   │        │
+│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                           客户端层 (Client Layer)                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                           AIClient                                  │    │
+│  │  • 提供商管理  • 统一入口  • 回退机制  • 模型路由  • 负载均衡        │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                           工厂层 (Factory Layer)                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │  createOpenAI  createAnthropic  createGoogle  createAzureOpenAI     │    │
+│  │  createCerebras  createGLM  createGroq  createDeepSeek ...          │    │
+│  │  createProviderRegistry()  createModelRouter()                      │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                           适配器层 (Adapter Layer)                            │
+│  ┌─────────┬─────────┬─────────┬─────────┬─────────┬─────────┐            │
+│  │ OpenAI  │Anthropic│ Google  │  Azure  │   AWS   │Cerebras │            │
+│  ├─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤            │
+│  │   GLM   │  Groq   │DeepSeek │Moonshot │  Qwen   │ Custom  │            │
+│  └─────────┴─────────┴─────────┴─────────┴─────────┴─────────┘            │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                         基础适配器 (Base Adapter)                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │  重试逻辑  SSE解析  错误处理  超时管理  请求规范化  响应标准化        │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                           类型层 (Type Layer)                                │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │  Message  ContentPart  Request  Response  Error  ModelInfo  Usage   │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────────────────┘
+```

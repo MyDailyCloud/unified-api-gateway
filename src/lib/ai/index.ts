@@ -126,3 +126,32 @@ export * from './electron';
 
 // 本地服务发现
 export { discoverLocalServices, getAvailableLocalServices, isServiceAvailable, createServiceDiscovery, serviceDiscovery, type LocalServiceInfo, type DiscoveryConfig } from './discovery';
+
+// 统一网关
+export {
+  AIGateway,
+  createAIGateway,
+  GatewayRouter,
+  createGatewayRouter,
+  createEndpointHandlers,
+  createRequestRouter,
+  createHealthHandler,
+  createModelsHandler,
+  createGatewayServer,
+  openaiNormalizer,
+  anthropicNormalizer,
+  googleNormalizer,
+  cohereNormalizer,
+  getNormalizer,
+  normalizers,
+  type RequestFormat,
+  type ResponseFormat,
+  type UnifiedRequest,
+  type UnifiedResponse,
+  type GatewayConfig,
+  type BackendConfig,
+  type RoutingConfig,
+  type RequestNormalizer,
+  type GatewayMiddleware,
+  type EndpointConfig,
+} from './gateway';

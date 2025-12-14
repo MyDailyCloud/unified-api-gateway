@@ -14,3 +14,35 @@ export { AIClient, getAIClient, setAIClient, type AIClientConfig } from './clien
 
 // Hooks
 export { useAI, useChat, type UseAIOptions, type UseAIReturn, type UseChatOptions, type UseChatReturn } from './hooks/use-ai';
+
+// 工厂函数
+export {
+  createOpenAI,
+  createAnthropic,
+  createGoogle,
+  createAzureOpenAI,
+  createCerebras,
+  createGLM,
+  createGroq,
+  createDeepSeek,
+  createMoonshot,
+  createQwen,
+  createCustomProvider,
+  type OpenAIFactoryConfig,
+  type AnthropicFactoryConfig,
+  type GoogleFactoryConfig,
+  type AzureOpenAIFactoryConfig,
+  type GenericFactoryConfig,
+  type ModelReference,
+} from './factory';
+
+// 注册表
+export {
+  createProviderRegistry,
+  createEmptyRegistry,
+  createModelRouter,
+  type ProviderFactory,
+  type ProviderRegistry,
+  type ProviderRegistryConfig,
+  type ModelRouter,
+} from './registry';

@@ -1,9 +1,7 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import * as path from 'path';
-import { createElectronApp, createElectronStoreSecureStorage } from '../src/lib/ai/app/electron';
 
 let mainWindow: BrowserWindow | null = null;
-let electronApp: Awaited<ReturnType<typeof createElectronApp>> | null = null;
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
@@ -19,25 +17,10 @@ async function createWindow() {
       nodeIntegration: false,
       sandbox: false,
     },
-    titleBarStyle: 'hiddenInset',
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     show: false,
+    backgroundColor: '#1a1a2e',
   });
-
-  // Initialize AI SDK Electron App
-  try {
-    const secureStorage = createElectronStoreSecureStorage('ai-sdk-keys');
-    
-    electronApp = await createElectronApp({
-      ipcMain,
-      secureStorage,
-      userDataPath: app.getPath('userData'),
-    });
-
-    await electronApp.initialize();
-    console.log('AI SDK Electron App initialized');
-  } catch (error) {
-    console.error('Failed to initialize AI SDK:', error);
-  }
 
   // Load the app
   if (isDev) {
@@ -56,15 +39,30 @@ async function createWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+
+  // Handle external links
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
 }
+
+// IPC Handlers
+ipcMain.handle('app:getVersion', () => {
+  return app.getVersion();
+});
+
+ipcMain.handle('app:getPlatform', () => {
+  return process.platform;
+});
+
+ipcMain.handle('app:getPath', (_, name: string) => {
+  return app.getPath(name as any);
+});
 
 app.whenReady().then(createWindow);
 
-app.on('window-all-closed', async () => {
-  if (electronApp) {
-    await electronApp.destroy();
-  }
-  
+app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
@@ -78,8 +76,19 @@ app.on('activate', () => {
 
 // Handle certificate errors in development
 if (isDev) {
-  app.on('certificate-error', (event, webContents, url, error, certificate, callback) => {
+  app.on('certificate-error', (event, _webContents, _url, _error, _certificate, callback) => {
     event.preventDefault();
     callback(true);
   });
 }
+
+// Security: Prevent new window creation
+app.on('web-contents-created', (_, contents) => {
+  contents.on('will-navigate', (event, url) => {
+    const parsedUrl = new URL(url);
+    if (parsedUrl.origin !== 'http://localhost:8080' && !url.startsWith('file://')) {
+      event.preventDefault();
+      shell.openExternal(url);
+    }
+  });
+});

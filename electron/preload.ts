@@ -1,66 +1,61 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { IPC_CHANNELS } from '../src/lib/ai/transport/ipc/channels';
 
-// Expose protected methods that allow the renderer process to use
-// ipcRenderer without exposing the entire object
+// Expose protected methods to the renderer process
 contextBridge.exposeInMainWorld('electron', {
-  // AI Service Methods
-  ai: {
-    chatCompletion: (args: unknown) => 
-      ipcRenderer.invoke(IPC_CHANNELS.AI.CHAT_COMPLETION, args),
-    listModels: (args: unknown) => 
-      ipcRenderer.invoke(IPC_CHANNELS.AI.LIST_MODELS, args),
-  },
-
-  // Internal Service Methods
-  internal: {
-    chat: (args: unknown) => 
-      ipcRenderer.invoke(IPC_CHANNELS.INTERNAL.CHAT, args),
-    listConversations: () => 
-      ipcRenderer.invoke(IPC_CHANNELS.INTERNAL.LIST_CONVERSATIONS),
-    getConversation: (args: unknown) => 
-      ipcRenderer.invoke(IPC_CHANNELS.INTERNAL.GET_CONVERSATION, args),
-    deleteConversation: (args: unknown) => 
-      ipcRenderer.invoke(IPC_CHANNELS.INTERNAL.DELETE_CONVERSATION, args),
-    listProviders: () => 
-      ipcRenderer.invoke(IPC_CHANNELS.INTERNAL.LIST_PROVIDERS),
-    getApiKeyStatus: (args: unknown) => 
-      ipcRenderer.invoke(IPC_CHANNELS.INTERNAL.GET_API_KEY_STATUS, args),
-    setApiKey: (args: unknown) => 
-      ipcRenderer.invoke(IPC_CHANNELS.INTERNAL.SET_API_KEY, args),
-    deleteApiKey: (args: unknown) => 
-      ipcRenderer.invoke(IPC_CHANNELS.INTERNAL.DELETE_API_KEY, args),
-    getStats: () => 
-      ipcRenderer.invoke(IPC_CHANNELS.INTERNAL.GET_STATS),
-  },
-
-  // System Methods
-  system: {
-    health: () => 
-      ipcRenderer.invoke(IPC_CHANNELS.SYSTEM.HEALTH),
-    version: () => 
-      ipcRenderer.invoke(IPC_CHANNELS.SYSTEM.VERSION),
+  // Application info
+  app: {
+    getVersion: () => ipcRenderer.invoke('app:getVersion'),
+    getPlatform: () => ipcRenderer.invoke('app:getPlatform'),
+    getPath: (name: string) => ipcRenderer.invoke('app:getPath', name),
   },
 
   // Platform info
   platform: process.platform,
   
-  // IPC utilities
+  // IPC communication
   ipc: {
-    send: (channel: string, data: unknown) => {
-      ipcRenderer.send(channel, data);
+    send: (channel: string, ...args: any[]) => {
+      ipcRenderer.send(channel, ...args);
     },
-    on: (channel: string, callback: (...args: unknown[]) => void) => {
+    invoke: (channel: string, ...args: any[]) => {
+      return ipcRenderer.invoke(channel, ...args);
+    },
+    on: (channel: string, callback: (...args: any[]) => void) => {
       ipcRenderer.on(channel, (_event, ...args) => callback(...args));
     },
-    once: (channel: string, callback: (...args: unknown[]) => void) => {
+    once: (channel: string, callback: (...args: any[]) => void) => {
       ipcRenderer.once(channel, (_event, ...args) => callback(...args));
     },
-    removeListener: (channel: string, callback: (...args: unknown[]) => void) => {
+    removeListener: (channel: string, callback: (...args: any[]) => void) => {
       ipcRenderer.removeListener(channel, callback);
+    },
+    removeAllListeners: (channel: string) => {
+      ipcRenderer.removeAllListeners(channel);
     },
   },
 });
+
+// Type declarations for the exposed API
+declare global {
+  interface Window {
+    electron: {
+      app: {
+        getVersion: () => Promise<string>;
+        getPlatform: () => Promise<string>;
+        getPath: (name: string) => Promise<string>;
+      };
+      platform: NodeJS.Platform;
+      ipc: {
+        send: (channel: string, ...args: any[]) => void;
+        invoke: (channel: string, ...args: any[]) => Promise<any>;
+        on: (channel: string, callback: (...args: any[]) => void) => void;
+        once: (channel: string, callback: (...args: any[]) => void) => void;
+        removeListener: (channel: string, callback: (...args: any[]) => void) => void;
+        removeAllListeners: (channel: string) => void;
+      };
+    };
+  }
+}
 
 // Notify that preload script has loaded
 console.log('Preload script loaded');

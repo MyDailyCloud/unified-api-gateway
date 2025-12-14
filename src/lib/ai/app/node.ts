@@ -137,12 +137,22 @@ export async function createNodeApp(config: NodeAppConfig = {}): Promise<NodeApp
         console.log(`   Runtime: ${auth.runtimeMode}`);
         if (auth.runtimeMode === 'node') {
           console.log(`   Auth: Admin login required`);
-          console.log(`   Endpoints:`);
-          console.log(`   - POST /internal/auth/login      Admin login`);
-          console.log(`   - POST /internal/auth/logout     Logout`);
-          console.log(`   - POST /internal/auth/change-password  Change password`);
-          console.log(`   - GET  /internal/auth/me         Get current user`);
-          console.log(`   - GET  /internal/auth/status     Auth status`);
+          console.log(`   Auth Endpoints:`);
+          console.log(`   - POST /internal/auth/login           Admin login`);
+          console.log(`   - POST /internal/auth/logout          Logout`);
+          console.log(`   - POST /internal/auth/change-password Change password`);
+          console.log(`   - GET  /internal/auth/me              Get current user`);
+          console.log(`   - GET  /internal/auth/status          Auth status`);
+          console.log(`   Gateway Key Endpoints (Admin only):`);
+          console.log(`   - GET    /internal/gateway-keys       List all keys`);
+          console.log(`   - POST   /internal/gateway-keys       Create new key`);
+          console.log(`   - GET    /internal/gateway-keys/:id   Get key details`);
+          console.log(`   - PUT    /internal/gateway-keys/:id   Update key`);
+          console.log(`   - DELETE /internal/gateway-keys/:id   Revoke key`);
+          console.log(`   - POST   /internal/gateway-keys/:id/regenerate  Regenerate`);
+          console.log(`   - POST   /internal/gateway-keys/:id/enable      Enable`);
+          console.log(`   - POST   /internal/gateway-keys/:id/disable     Disable`);
+          console.log(`   - GET    /internal/gateway-keys/stats Statistics`);
         }
       }
     },

@@ -8,6 +8,8 @@ import { createCredentialsManager, type CredentialsManager } from './auth/creden
 import { createSessionManager, type SessionManager } from './auth/session';
 import { createAuthMiddleware, type AuthMiddleware, type AuthMiddlewareConfig } from './auth/middleware';
 import { createAuthRouter, type AuthRouter } from './auth/auth-router';
+import { createGatewayKeyManager, type GatewayKeyManager } from './auth/gateway-keys';
+import { createGatewayKeyRouter, type GatewayKeyRouter } from './auth/gateway-key-router';
 import type { AuthConfig } from './auth/types';
 
 export interface ServerInitConfig {
@@ -15,6 +17,8 @@ export interface ServerInitConfig {
   auth?: Partial<AuthConfig>;
   /** 凭据存储路径 */
   credentialsPath?: string;
+  /** Gateway Keys 存储路径 */
+  gatewayKeysPath?: string;
   /** 会话超时时间 */
   sessionTimeout?: number;
   /** 是否静默模式 */
@@ -28,10 +32,14 @@ export interface ServerInitResult {
   credentialsManager: CredentialsManager;
   /** 会话管理器 */
   sessionManager: SessionManager;
+  /** Gateway Key 管理器 */
+  gatewayKeyManager: GatewayKeyManager;
   /** 认证中间件 */
   authMiddleware: AuthMiddleware;
   /** 认证路由器 */
   authRouter: AuthRouter;
+  /** Gateway Key 路由器 */
+  gatewayKeyRouter: GatewayKeyRouter;
   /** 生成的 Admin 密码（仅首次启动） */
   generatedPassword?: string;
 }
@@ -55,6 +63,10 @@ export async function initServer(config: ServerInitConfig = {}): Promise<ServerI
   // 创建会话管理器
   const sessionManager = createSessionManager(config.sessionTimeout);
   sessionManager.startCleanup();
+
+  // 创建 Gateway Key 管理器
+  const gatewayKeyManager = createGatewayKeyManager(config.gatewayKeysPath);
+  await gatewayKeyManager.load();
 
   let generatedPassword: string | undefined;
 
@@ -81,6 +93,12 @@ export async function initServer(config: ServerInitConfig = {}): Promise<ServerI
         console.log(`   Admin: ${credentials.username} (configured)`);
       }
     }
+
+    // 显示 Gateway Keys 统计
+    const keyStats = gatewayKeyManager.getStats();
+    if (!silent && keyStats.total > 0) {
+      console.log(`   Gateway Keys: ${keyStats.active} active, ${keyStats.total} total`);
+    }
   } else {
     if (!silent) {
       console.log(`   Auth: Disabled (Electron mode - user is admin)`);
@@ -94,6 +112,7 @@ export async function initServer(config: ServerInitConfig = {}): Promise<ServerI
     sessionTimeout: config.sessionTimeout,
     credentialsManager,
     sessionManager,
+    gatewayKeyManager,
   };
 
   const authMiddleware = createAuthMiddleware(authMiddlewareConfig);
@@ -101,12 +120,17 @@ export async function initServer(config: ServerInitConfig = {}): Promise<ServerI
   // 创建认证路由器
   const authRouter = createAuthRouter(authMiddleware);
 
+  // 创建 Gateway Key 路由器
+  const gatewayKeyRouter = createGatewayKeyRouter(gatewayKeyManager, authMiddleware);
+
   return {
     runtimeMode,
     credentialsManager,
     sessionManager,
+    gatewayKeyManager,
     authMiddleware,
     authRouter,
+    gatewayKeyRouter,
     generatedPassword,
   };
 }

@@ -106,8 +106,8 @@ export interface ElectronAIBridge {
    */
   chatStream(
     request: ChatCompletionRequest, 
-    provider?: AIProvider,
-    onChunk: (chunk: StreamChunk) => void
+    onChunk: (chunk: StreamChunk) => void,
+    provider?: AIProvider
   ): Promise<void>;
 
   /**
@@ -161,7 +161,7 @@ export class ElectronAIClient {
     const response = await this.ipcRenderer.invoke(AI_IPC_CHANNELS.CHAT, {
       request,
       provider,
-    } as IPCChatRequest);
+    } as IPCChatRequest) as IPCChatResponse;
 
     if (!response.success) {
       throw new Error(response.error || 'Unknown error');
@@ -257,56 +257,56 @@ export class ElectronAIClient {
    * 列出模型
    */
   async listModels(provider?: AIProvider): Promise<ModelInfo[]> {
-    return this.ipcRenderer.invoke(AI_IPC_CHANNELS.LIST_MODELS, { provider });
+    return this.ipcRenderer.invoke(AI_IPC_CHANNELS.LIST_MODELS, { provider }) as Promise<ModelInfo[]>;
   }
 
   /**
    * 验证 API Key
    */
   async validateApiKey(provider: AIProvider): Promise<boolean> {
-    return this.ipcRenderer.invoke(AI_IPC_CHANNELS.VALIDATE_KEY, { provider });
+    return this.ipcRenderer.invoke(AI_IPC_CHANNELS.VALIDATE_KEY, { provider }) as Promise<boolean>;
   }
 
   /**
    * 注册提供商
    */
   async registerProvider(config: IPCProviderConfig): Promise<void> {
-    return this.ipcRenderer.invoke(AI_IPC_CHANNELS.REGISTER_PROVIDER, config);
+    await this.ipcRenderer.invoke(AI_IPC_CHANNELS.REGISTER_PROVIDER, config);
   }
 
   /**
    * 注销提供商
    */
   async unregisterProvider(provider: AIProvider): Promise<void> {
-    return this.ipcRenderer.invoke(AI_IPC_CHANNELS.UNREGISTER_PROVIDER, { provider });
+    await this.ipcRenderer.invoke(AI_IPC_CHANNELS.UNREGISTER_PROVIDER, { provider });
   }
 
   /**
    * 获取已注册的提供商
    */
   async getProviders(): Promise<AIProvider[]> {
-    return this.ipcRenderer.invoke(AI_IPC_CHANNELS.GET_PROVIDERS);
+    return this.ipcRenderer.invoke(AI_IPC_CHANNELS.GET_PROVIDERS) as Promise<AIProvider[]>;
   }
 
   /**
    * 安全存储 API Key
    */
   async storeApiKey(provider: AIProvider, apiKey: string): Promise<void> {
-    return this.ipcRenderer.invoke(AI_IPC_CHANNELS.STORE_API_KEY, { provider, apiKey });
+    await this.ipcRenderer.invoke(AI_IPC_CHANNELS.STORE_API_KEY, { provider, apiKey });
   }
 
   /**
    * 删除存储的 API Key
    */
   async deleteApiKey(provider: AIProvider): Promise<void> {
-    return this.ipcRenderer.invoke(AI_IPC_CHANNELS.DELETE_API_KEY, { provider });
+    await this.ipcRenderer.invoke(AI_IPC_CHANNELS.DELETE_API_KEY, { provider });
   }
 
   /**
    * 列出所有存储的 API Key 提供商
    */
   async listStoredKeyProviders(): Promise<AIProvider[]> {
-    return this.ipcRenderer.invoke(AI_IPC_CHANNELS.LIST_API_KEYS);
+    return this.ipcRenderer.invoke(AI_IPC_CHANNELS.LIST_API_KEYS) as Promise<AIProvider[]>;
   }
 }
 

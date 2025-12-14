@@ -364,6 +364,22 @@ export const RATE_LIMIT_PRESETS: Record<AIProvider, Partial<QueueConfig>> = {
     maxConcurrent: 3,
     rateLimit: { requests: 30, perMilliseconds: 60000 },
   },
+  google: {
+    maxConcurrent: 5,
+    rateLimit: { requests: 60, perMilliseconds: 60000 },
+  },
+  azure: {
+    maxConcurrent: 5,
+    rateLimit: { requests: 60, perMilliseconds: 60000 },
+  },
+  mistral: {
+    maxConcurrent: 5,
+    rateLimit: { requests: 60, perMilliseconds: 60000 },
+  },
+  cohere: {
+    maxConcurrent: 5,
+    rateLimit: { requests: 100, perMilliseconds: 60000 },
+  },
   custom: {
     maxConcurrent: 5,
     rateLimit: { requests: 60, perMilliseconds: 60000 },

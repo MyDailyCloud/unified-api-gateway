@@ -22,3 +22,15 @@ export {
   initPreloadAI,
   type PreloadAIAPI,
 } from './preload';
+
+export {
+  ElectronMainBridge,
+  MemorySecureStorage,
+  createMainBridge,
+  createElectronStoreStorage,
+  createKeytarStorage,
+  type SecureStorage,
+  type MainBridgeConfig,
+  type ElectronIpcMain,
+  type ElectronIpcMainEvent,
+} from './main-bridge';

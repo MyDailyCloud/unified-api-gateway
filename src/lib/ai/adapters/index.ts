@@ -13,3 +13,9 @@ export { DeepSeekAdapter } from './deepseek-adapter';
 export { MoonshotAdapter } from './moonshot-adapter';
 export { QwenAdapter } from './qwen-adapter';
 export { CustomAdapter, type CustomAdapterConfig } from './custom-adapter';
+
+// 新增适配器
+export { GoogleAdapter } from './google-adapter';
+export { AzureAdapter, type AzureProviderConfig } from './azure-adapter';
+export { MistralAdapter } from './mistral-adapter';
+export { CohereAdapter } from './cohere-adapter';

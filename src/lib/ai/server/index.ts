@@ -1,31 +1,71 @@
 /**
  * AI SDK HTTP Server
  * Node.js HTTP 服务器实现 - 提供 OpenAI 兼容的 API 端点
+ * 支持高并发、速率限制、对话管理
  */
 
 import { AIClient } from '../client';
 import { loadConfig, validateConfig, type ServerConfig, type ProviderConfigEntry } from './config';
 import type { ChatCompletionRequest, StreamChunk, AIProvider } from '../types';
+import { ProviderRateLimiter, RATE_LIMIT_PRESETS } from '../queue';
+import { createStorage, type UnifiedStorage } from '../storage';
+import { ConversationManager, MessageManager, createConversationManager, createMessageManager } from '../models';
 
 export { loadConfig, validateConfig, generateExampleConfig } from './config';
 export type { ServerConfig, ProviderConfigEntry } from './config';
+
+// ==================== 扩展服务器配置 ====================
+
+export interface ExtendedServerConfig extends ServerConfig {
+  /** 启用并发控制 */
+  enableRateLimiting?: boolean;
+  /** 启用对话持久化 */
+  enablePersistence?: boolean;
+  /** 数据库路径 */
+  dbPath?: string;
+  /** API 认证密钥（可选） */
+  apiKey?: string;
+}
 
 export interface ServerInstance {
   start(): Promise<void>;
   stop(): Promise<void>;
   getClient(): AIClient;
   getConfig(): ServerConfig;
+  getRateLimiter(): ProviderRateLimiter | null;
+  getStorage(): UnifiedStorage | null;
+  getConversationManager(): ConversationManager | null;
+  getMessageManager(): MessageManager | null;
+}
+
+// ==================== 服务器统计 ====================
+
+interface ServerStats {
+  uptime: number;
+  startedAt: number;
+  requests: {
+    total: number;
+    chat: number;
+    stream: number;
+    conversations: number;
+  };
 }
 
 /**
  * 创建 HTTP 服务器
  * Create HTTP server with OpenAI-compatible endpoints
  */
-export async function createServer(configOrPath?: ServerConfig | string): Promise<ServerInstance> {
+export async function createServer(configOrPath?: ExtendedServerConfig | string): Promise<ServerInstance> {
   // 加载配置
-  const config = typeof configOrPath === 'string' || configOrPath === undefined
+  const baseConfig = typeof configOrPath === 'string' || configOrPath === undefined
     ? await loadConfig(typeof configOrPath === 'string' ? configOrPath : undefined)
     : configOrPath;
+
+  const config: ExtendedServerConfig = {
+    enableRateLimiting: true,
+    enablePersistence: false,
+    ...baseConfig,
+  };
 
   // 验证配置
   const validation = validateConfig(config);
@@ -57,18 +97,55 @@ export async function createServer(configOrPath?: ServerConfig | string): Promis
     }
   }
 
+  // 创建速率限制器
+  let rateLimiter: ProviderRateLimiter | null = null;
+  if (config.enableRateLimiting) {
+    rateLimiter = new ProviderRateLimiter();
+    // 应用预设配置
+    for (const provider of client.getProviders()) {
+      const preset = RATE_LIMIT_PRESETS[provider];
+      if (preset) {
+        rateLimiter.setProviderConfig(provider, preset);
+      }
+    }
+    log(config, 'info', 'Rate limiting enabled');
+  }
+
+  // 创建存储和管理器
+  let storage: UnifiedStorage | null = null;
+  let conversationManager: ConversationManager | null = null;
+  let messageManager: MessageManager | null = null;
+  
+  if (config.enablePersistence) {
+    storage = await createStorage({ 
+      type: 'sqlite', 
+      dbPath: config.dbPath || './ai-server.db' 
+    });
+    conversationManager = createConversationManager(storage);
+    messageManager = createMessageManager(storage);
+    log(config, 'info', 'Persistence enabled');
+  }
+
   let server: ReturnType<typeof import('http').createServer> | null = null;
+  const stats: ServerStats = {
+    uptime: 0,
+    startedAt: 0,
+    requests: { total: 0, chat: 0, stream: 0, conversations: 0 },
+  };
 
   return {
     async start() {
       const http = await import('http');
+      stats.startedAt = Date.now();
       
       server = http.createServer(async (req, res) => {
+        stats.requests.total++;
+        
         // CORS 处理
         if (config.cors?.enabled) {
           const origin = config.cors.origins?.includes('*') ? '*' : config.cors.origins?.join(', ') || '*';
           res.setHeader('Access-Control-Allow-Origin', origin);
-          res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+          res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
           res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
         }
 
@@ -76,6 +153,17 @@ export async function createServer(configOrPath?: ServerConfig | string): Promis
           res.writeHead(204);
           res.end();
           return;
+        }
+
+        // API 认证
+        if (config.apiKey) {
+          const authHeader = req.headers.authorization;
+          const token = authHeader?.replace('Bearer ', '');
+          if (token !== config.apiKey) {
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Unauthorized' }));
+            return;
+          }
         }
 
         const url = new URL(req.url || '/', `http://${req.headers.host}`);
@@ -88,6 +176,22 @@ export async function createServer(configOrPath?: ServerConfig | string): Promis
               status: 'ok',
               providers: client.getProviders(),
               timestamp: new Date().toISOString(),
+              features: {
+                rateLimiting: config.enableRateLimiting,
+                persistence: config.enablePersistence,
+              },
+            }));
+            return;
+          }
+
+          // 服务器统计
+          if (url.pathname === '/v1/stats') {
+            const queueStats = rateLimiter?.getAllStats() || {};
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+              uptime: Date.now() - stats.startedAt,
+              requests: stats.requests,
+              queues: queueStats,
             }));
             return;
           }
@@ -113,13 +217,11 @@ export async function createServer(configOrPath?: ServerConfig | string): Promis
             const body = await readBody(req);
             const request = JSON.parse(body) as ChatCompletionRequest & { provider?: AIProvider };
             
-            // 从请求中获取 provider 或使用默认
             const provider = request.provider;
-            
             log(config, 'info', `Chat request: model=${request.model}, stream=${request.stream}, provider=${provider || 'default'}`);
 
             if (request.stream) {
-              // SSE 流式响应
+              stats.requests.stream++;
               res.writeHead(200, {
                 'Content-Type': 'text/event-stream',
                 'Cache-Control': 'no-cache',
@@ -142,12 +244,129 @@ export async function createServer(configOrPath?: ServerConfig | string): Promis
               
               res.end();
             } else {
-              // 非流式响应
-              const response = await client.chat(request, provider);
+              stats.requests.chat++;
+              
+              // 使用速率限制器
+              let response;
+              if (rateLimiter && provider) {
+                response = await rateLimiter.request(
+                  request,
+                  provider,
+                  (req, prov) => client.chat(req, prov)
+                );
+              } else {
+                response = await client.chat(request, provider);
+              }
+              
               res.writeHead(200, { 'Content-Type': 'application/json' });
               res.end(JSON.stringify(response));
             }
             return;
+          }
+
+          // ==================== 对话管理 API ====================
+
+          // 列出对话
+          if (url.pathname === '/v1/conversations' && req.method === 'GET') {
+            stats.requests.conversations++;
+            if (!conversationManager) {
+              res.writeHead(501, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Persistence not enabled' }));
+              return;
+            }
+            
+            const conversations = await conversationManager.list();
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ data: conversations }));
+            return;
+          }
+
+          // 创建对话
+          if (url.pathname === '/v1/conversations' && req.method === 'POST') {
+            stats.requests.conversations++;
+            if (!conversationManager) {
+              res.writeHead(501, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Persistence not enabled' }));
+              return;
+            }
+            
+            const body = await readBody(req);
+            const data = JSON.parse(body);
+            const conversation = await conversationManager.create(data);
+            res.writeHead(201, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(conversation));
+            return;
+          }
+
+          // 获取/更新/删除单个对话
+          const convMatch = url.pathname.match(/^\/v1\/conversations\/([^/]+)$/);
+          if (convMatch) {
+            stats.requests.conversations++;
+            const convId = convMatch[1];
+            
+            if (!conversationManager) {
+              res.writeHead(501, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Persistence not enabled' }));
+              return;
+            }
+
+            if (req.method === 'GET') {
+              const conversation = await conversationManager.get(convId);
+              if (!conversation) {
+                res.writeHead(404, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Conversation not found' }));
+                return;
+              }
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify(conversation));
+              return;
+            }
+
+            if (req.method === 'PUT') {
+              const body = await readBody(req);
+              const data = JSON.parse(body);
+              const updated = await conversationManager.update(convId, data);
+              if (!updated) {
+                res.writeHead(404, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Conversation not found' }));
+                return;
+              }
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify(updated));
+              return;
+            }
+
+            if (req.method === 'DELETE') {
+              const deleted = await conversationManager.delete(convId);
+              if (messageManager) {
+                await messageManager.deleteByConversation(convId);
+              }
+              res.writeHead(deleted ? 204 : 404);
+              res.end();
+              return;
+            }
+          }
+
+          // 对话消息管理
+          const msgMatch = url.pathname.match(/^\/v1\/conversations\/([^/]+)\/messages$/);
+          if (msgMatch && messageManager) {
+            const convId = msgMatch[1];
+            
+            if (req.method === 'GET') {
+              const messages = await messageManager.getByConversation(convId);
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ data: messages }));
+              return;
+            }
+
+            if (req.method === 'POST') {
+              const body = await readBody(req);
+              const data = JSON.parse(body);
+              const message = await messageManager.add({ ...data, conversationId: convId });
+              res.writeHead(201, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify(message));
+              return;
+            }
           }
 
           // 404
@@ -165,10 +384,22 @@ export async function createServer(configOrPath?: ServerConfig | string): Promis
         server!.listen(config.port, config.host, () => {
           console.log(`\n🚀 AI SDK Server running at http://${config.host}:${config.port}`);
           console.log(`   Providers: ${client.getProviders().join(', ') || 'none'}`);
+          console.log(`   Rate Limiting: ${config.enableRateLimiting ? 'enabled' : 'disabled'}`);
+          console.log(`   Persistence: ${config.enablePersistence ? 'enabled' : 'disabled'}`);
           console.log(`\n   Endpoints:`);
-          console.log(`   - GET  /health              Health check`);
-          console.log(`   - GET  /v1/models           List models`);
-          console.log(`   - POST /v1/chat/completions Chat completions (OpenAI compatible)`);
+          console.log(`   - GET  /health                    Health check`);
+          console.log(`   - GET  /v1/stats                  Server statistics`);
+          console.log(`   - GET  /v1/models                 List models`);
+          console.log(`   - POST /v1/chat/completions       Chat completions`);
+          if (config.enablePersistence) {
+            console.log(`   - GET  /v1/conversations          List conversations`);
+            console.log(`   - POST /v1/conversations          Create conversation`);
+            console.log(`   - GET  /v1/conversations/:id      Get conversation`);
+            console.log(`   - PUT  /v1/conversations/:id      Update conversation`);
+            console.log(`   - DELETE /v1/conversations/:id    Delete conversation`);
+            console.log(`   - GET  /v1/conversations/:id/messages  Get messages`);
+            console.log(`   - POST /v1/conversations/:id/messages  Add message`);
+          }
           console.log('');
           resolve();
         });
@@ -178,7 +409,10 @@ export async function createServer(configOrPath?: ServerConfig | string): Promis
     async stop() {
       if (server) {
         return new Promise((resolve) => {
-          server!.close(() => {
+          server!.close(async () => {
+            if (storage?.close) {
+              await storage.close();
+            }
             log(config, 'info', 'Server stopped');
             resolve();
           });
@@ -192,6 +426,22 @@ export async function createServer(configOrPath?: ServerConfig | string): Promis
 
     getConfig() {
       return config;
+    },
+
+    getRateLimiter() {
+      return rateLimiter;
+    },
+
+    getStorage() {
+      return storage;
+    },
+
+    getConversationManager() {
+      return conversationManager;
+    },
+
+    getMessageManager() {
+      return messageManager;
     },
   };
 }
@@ -239,7 +489,7 @@ function log(config: ServerConfig, level: string, message: string) {
  * 快速启动服务器
  * Quick start server with auto-loaded config
  */
-export async function startServer(configOrPath?: ServerConfig | string): Promise<ServerInstance> {
+export async function startServer(configOrPath?: ExtendedServerConfig | string): Promise<ServerInstance> {
   const server = await createServer(configOrPath);
   await server.start();
   return server;

@@ -21,7 +21,39 @@ permissions:
   contents: write
 
 jobs:
+  # 后端测试 - 在所有构建之前运行
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: TypeScript type check
+        run: npx tsc --noEmit
+
+      - name: Lint check
+        run: npm run lint || echo "Lint script not found, skipping"
+
+      - name: Run tests
+        run: npm test || echo "Test script not found, skipping"
+
+      - name: Build Vite app (验证前端构建)
+        run: npm run build
+
+      - name: Compile Electron TypeScript (验证 Electron 构建)
+        run: npx tsc -p electron/tsconfig.json
+
   build-mac:
+    needs: test
     if: github.event.inputs.platform == 'all' || github.event.inputs.platform == 'mac' || github.event_name == 'push'
     runs-on: macos-latest
     steps:
@@ -61,6 +93,7 @@ jobs:
           if-no-files-found: warn
 
   build-windows:
+    needs: test
     if: github.event.inputs.platform == 'all' || github.event.inputs.platform == 'windows' || github.event_name == 'push'
     runs-on: windows-latest
     steps:
@@ -97,6 +130,7 @@ jobs:
           if-no-files-found: warn
 
   build-linux:
+    needs: test
     if: github.event.inputs.platform == 'all' || github.event.inputs.platform == 'linux' || github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:

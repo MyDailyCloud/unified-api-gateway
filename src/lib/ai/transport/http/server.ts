@@ -6,6 +6,14 @@
 import type { AICore } from '../../core';
 import { ApiRouter, type ApiRouterConfig, type HttpRequest, type HttpResponse } from './api-router';
 import { InternalRouter, type InternalRouterConfig } from './internal-router';
+import type { 
+  AuthMiddleware, 
+  AuthRouter, 
+  GatewayKeyRouter,
+  AuthContext,
+  ExtendedAuthContext 
+} from '../../server/auth';
+import { checkRoutePermission } from '../../server/auth';
 
 export interface HttpServerConfig {
   /** API 端口（对外服务） */
@@ -20,6 +28,17 @@ export interface HttpServerConfig {
   api?: ApiRouterConfig;
   /** 内部路由配置 */
   internal?: InternalRouterConfig;
+  /** 认证中间件 */
+  authMiddleware?: AuthMiddleware;
+  /** 认证路由器 */
+  authRouter?: AuthRouter;
+  /** Gateway Key 路由器 */
+  gatewayKeyRouter?: GatewayKeyRouter;
+  /** CORS 配置 */
+  cors?: {
+    enabled?: boolean;
+    origins?: string[];
+  };
 }
 
 export interface HttpServerInstance {
@@ -31,6 +50,11 @@ export interface HttpServerInstance {
   handleRequest(req: HttpRequest): Promise<HttpResponse>;
   /** 获取端口信息 */
   getPorts(): { api?: number; internal?: number; unified?: number };
+}
+
+/** 扩展请求，包含认证上下文 */
+export interface AuthenticatedRequest extends HttpRequest {
+  auth?: AuthContext | ExtendedAuthContext;
 }
 
 /**
@@ -48,11 +72,63 @@ export function createInternalRouter(internalService: InstanceType<typeof import
 }
 
 /**
+ * 获取 CORS 头
+ */
+function getCorsHeaders(config: HttpServerConfig): Record<string, string> {
+  const origins = config.cors?.origins ?? ['*'];
+  const origin = origins.includes('*') ? '*' : origins.join(', ');
+  
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Auth-Mode, X-Provider',
+    'Access-Control-Max-Age': '86400',
+  };
+}
+
+/**
+ * 添加 CORS 头到响应
+ */
+function addCorsHeaders(response: HttpResponse, config: HttpServerConfig): HttpResponse {
+  const corsHeaders = getCorsHeaders(config);
+  return {
+    ...response,
+    headers: {
+      ...corsHeaders,
+      ...response.headers,
+    },
+  };
+}
+
+/**
+ * 创建错误响应
+ */
+function errorResponse(status: number, message: string, config: HttpServerConfig): HttpResponse {
+  return addCorsHeaders({
+    status,
+    headers: { 'Content-Type': 'application/json' },
+    body: {
+      error: {
+        message,
+        type: status === 401 ? 'authentication_error' : 
+              status === 403 ? 'permission_denied' :
+              status === 400 ? 'invalid_request_error' : 
+              status === 404 ? 'not_found_error' : 'api_error',
+        code: status,
+      },
+    },
+  }, config);
+}
+
+/**
  * 创建 HTTP 服务器
  */
 export function createHttpServer(core: AICore, config: HttpServerConfig = {}): HttpServerInstance {
   const apiRouter = new ApiRouter(core.ai, config.api);
   const internalRouter = new InternalRouter(core.internal, config.internal);
+  const authMiddleware = config.authMiddleware;
+  const authRouter = config.authRouter;
+  const gatewayKeyRouter = config.gatewayKeyRouter;
   
   const serverConfig = {
     apiPort: config.apiPort,
@@ -67,17 +143,57 @@ export function createHttpServer(core: AICore, config: HttpServerConfig = {}): H
   let unifiedServer: import('http').Server | null = null;
 
   /**
-   * 处理请求
+   * 处理请求（带认证）
    */
   async function handleRequest(req: HttpRequest): Promise<HttpResponse> {
-    // 先尝试内部路由
-    const internalResponse = await internalRouter.handle(req);
-    if (internalResponse) {
-      return internalResponse;
+    // CORS 预检
+    if (req.method === 'OPTIONS') {
+      return addCorsHeaders({
+        status: 204,
+        headers: {},
+      }, config);
     }
 
-    // 再尝试 API 路由
-    return apiRouter.handle(req);
+    // 认证
+    let auth: AuthContext | ExtendedAuthContext | undefined;
+    if (authMiddleware) {
+      auth = await authMiddleware.authenticate(req);
+      (req as AuthenticatedRequest).auth = auth;
+    }
+
+    // 认证路由（登录/登出等）- 这些路由不需要权限检查
+    if (authRouter) {
+      const authResponse = await authRouter.handle(req);
+      if (authResponse) {
+        return addCorsHeaders(authResponse, config);
+      }
+    }
+
+    // Gateway Key 路由（需要 admin 权限，但 router 内部会检查）
+    if (gatewayKeyRouter) {
+      const gatewayResponse = await gatewayKeyRouter.handle(req);
+      if (gatewayResponse) {
+        return addCorsHeaders(gatewayResponse, config);
+      }
+    }
+
+    // 权限检查（如果启用了认证）
+    if (authMiddleware && auth) {
+      const { allowed, reason } = checkRoutePermission(req.method, req.path, auth);
+      if (!allowed) {
+        return errorResponse(auth.authenticated ? 403 : 401, reason || 'Permission denied', config);
+      }
+    }
+
+    // 内部路由
+    const internalResponse = await internalRouter.handle(req);
+    if (internalResponse) {
+      return addCorsHeaders(internalResponse, config);
+    }
+
+    // API 路由
+    const apiResponse = await apiRouter.handle(req);
+    return addCorsHeaders(apiResponse, config);
   }
 
   /**
@@ -95,24 +211,70 @@ export function createHttpServer(core: AICore, config: HttpServerConfig = {}): H
 
         const url = new URL(nodeReq.url ?? '/', `http://${nodeReq.headers.host}`);
         
+        let body: unknown;
+        if (bodyStr) {
+          try {
+            body = JSON.parse(bodyStr);
+          } catch {
+            // 非 JSON body，保持 undefined
+          }
+        }
+
         const req: HttpRequest = {
           method: nodeReq.method ?? 'GET',
           path: url.pathname,
           headers: Object.fromEntries(
             Object.entries(nodeReq.headers).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v])
           ),
-          body: bodyStr ? JSON.parse(bodyStr) : undefined,
+          body,
           query: Object.fromEntries(url.searchParams),
         };
 
         // 路由处理
         let response: HttpResponse;
         if (router === 'api') {
-          response = await apiRouter.handle(req);
+          // 仅 API 路由，但仍需认证
+          if (authMiddleware) {
+            const auth = await authMiddleware.authenticate(req);
+            (req as AuthenticatedRequest).auth = auth;
+            
+            const { allowed, reason } = checkRoutePermission(req.method, req.path, auth);
+            if (!allowed) {
+              response = errorResponse(auth.authenticated ? 403 : 401, reason || 'Permission denied', config);
+            } else {
+              response = await apiRouter.handle(req);
+              response = addCorsHeaders(response, config);
+            }
+          } else {
+            response = await apiRouter.handle(req);
+            response = addCorsHeaders(response, config);
+          }
         } else if (router === 'internal') {
-          const internalResponse = await internalRouter.handle(req);
-          response = internalResponse ?? { status: 404, headers: {}, body: { error: 'Not found' } };
+          // 仅内部路由
+          if (authMiddleware) {
+            const auth = await authMiddleware.authenticate(req);
+            (req as AuthenticatedRequest).auth = auth;
+          }
+          
+          // 先检查认证路由
+          if (authRouter) {
+            const authResponse = await authRouter.handle(req);
+            if (authResponse) {
+              response = addCorsHeaders(authResponse, config);
+            } else {
+              const internalResponse = await internalRouter.handle(req);
+              response = internalResponse 
+                ? addCorsHeaders(internalResponse, config)
+                : errorResponse(404, 'Not found', config);
+            }
+          } else {
+            const internalResponse = await internalRouter.handle(req);
+            response = internalResponse 
+              ? addCorsHeaders(internalResponse, config)
+              : errorResponse(404, 'Not found', config);
+          }
         } else {
+          // 统一处理
           response = await handleRequest(req);
         }
 
@@ -132,8 +294,9 @@ export function createHttpServer(core: AICore, config: HttpServerConfig = {}): H
         }
       } catch (error) {
         console.error('Server error:', error);
-        nodeRes.writeHead(500, { 'Content-Type': 'application/json' });
-        nodeRes.end(JSON.stringify({ error: 'Internal server error' }));
+        const errResponse = errorResponse(500, 'Internal server error', config);
+        nodeRes.writeHead(errResponse.status, errResponse.headers);
+        nodeRes.end(JSON.stringify(errResponse.body));
       }
     };
   }

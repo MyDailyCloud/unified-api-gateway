@@ -112,9 +112,13 @@ export async function createNodeApp(config: NodeAppConfig = {}): Promise<NodeApp
     }
   }
 
-  // 配置 HTTP 服务器
+  // 配置 HTTP 服务器（集成认证）
   const httpConfig: HttpServerConfig = {
     ...config.http,
+    // 注入认证组件
+    authMiddleware: auth.authMiddleware,
+    authRouter: auth.authRouter,
+    gatewayKeyRouter: auth.gatewayKeyRouter,
   };
 
   // 根据模式调整配置

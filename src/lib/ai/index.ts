@@ -166,4 +166,31 @@ export {
   type ServerConfig,
   type ProviderConfigEntry,
   type ServerInstance,
+  type ExtendedServerConfig,
 } from './server';
+
+// 统一存储层
+export * from './storage';
+
+// 数据模型（重命名 Message 避免冲突）
+export {
+  ConversationManager,
+  FolderManager,
+  createConversationManager,
+  createFolderManager,
+  MessageManager,
+  createMessageManager,
+  estimateTokenCount,
+  ApiKeyManager,
+  createApiKeyManager,
+  generateEncryptionKey,
+  type Conversation,
+  type ConversationParameters,
+  type ConversationWithMessages,
+  type ConversationFolder,
+  type Message as ChatMessage,
+  type MessageMetadata,
+  type MessageAttachment,
+  type StoredApiKey,
+  type ApiKeyInput,
+} from './models';

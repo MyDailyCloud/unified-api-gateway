@@ -23,6 +23,9 @@ interface ElectronAPI {
     removeListener: (channel: string, callback: (...args: any[]) => void) => void;
     removeAllListeners: (channel: string) => void;
   };
+  // AI-related properties (from src/lib/ai/electron/ipc-adapter.ts)
+  ai?: any;
+  ipcRenderer?: any;
 }
 
 declare global {

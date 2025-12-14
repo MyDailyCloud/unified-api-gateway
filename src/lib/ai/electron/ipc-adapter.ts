@@ -192,22 +192,25 @@ export class ElectronAIClient {
     let chunkIndex = 0;
 
     // 监听 chunk 事件
-    const chunkHandler = (_event: unknown, data: IPCStreamChunk) => {
-      if (data.requestId === requestId) {
+    const chunkHandler = (_event: unknown, ...args: unknown[]) => {
+      const data = args[0] as IPCStreamChunk;
+      if (data && data.requestId === requestId) {
         chunks.push(data.chunk);
       }
     };
 
     // 监听结束事件
-    const endHandler = (_event: unknown, data: { requestId: string }) => {
-      if (data.requestId === requestId) {
+    const endHandler = (_event: unknown, ...args: unknown[]) => {
+      const data = args[0] as { requestId: string };
+      if (data && data.requestId === requestId) {
         resolveStream();
       }
     };
 
     // 监听错误事件
-    const errorHandler = (_event: unknown, data: { requestId: string; error: string }) => {
-      if (data.requestId === requestId) {
+    const errorHandler = (_event: unknown, ...args: unknown[]) => {
+      const data = args[0] as { requestId: string; error: string };
+      if (data && data.requestId === requestId) {
         rejectStream(new Error(data.error));
       }
     };
@@ -324,7 +327,9 @@ export interface ElectronIpcRenderer {
 }
 
 // ==================== Window 类型扩展 ====================
-
+// Note: The global Window.electron interface is defined in electron/env.d.ts
+// This declaration is commented out to avoid conflicts
+/*
 declare global {
   interface Window {
     electron?: {
@@ -333,6 +338,7 @@ declare global {
     };
   }
 }
+*/
 
 // ==================== 工具函数 ====================
 
@@ -347,8 +353,8 @@ export function isElectronRenderer(): boolean {
  * 获取 Electron AI 客户端
  */
 export function getElectronAIClient(): ElectronAIClient | null {
-  if (isElectronRenderer() && window.electron) {
-    return window.electron.ai;
+  if (isElectronRenderer() && window.electron && window.electron.ai) {
+    return window.electron.ai as ElectronAIClient;
   }
   return null;
 }

@@ -64,7 +64,7 @@ export function clearAuthToken(): void {
  */
 export function isElectron(): boolean {
   return typeof window !== 'undefined' && 
-    (window as any).electronAPI !== undefined;
+    (window as any).electron !== undefined;
 }
 
 /**

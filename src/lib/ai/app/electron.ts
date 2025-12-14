@@ -132,7 +132,7 @@ export async function createElectronApp(config: ElectronAppConfig = {}): Promise
           continue;
       }
       
-      core.registerProviderWithAdapter(provider, adapter);
+      core.registerProviderWithAdapter(provider, adapter as any);
     }
   }
 
@@ -188,7 +188,7 @@ export async function createElectronApp(config: ElectronAppConfig = {}): Promise
           continue;
       }
       
-      core.registerProviderWithAdapter(provider, adapter);
+      core.registerProviderWithAdapter(provider, adapter as any);
     }
   }
 

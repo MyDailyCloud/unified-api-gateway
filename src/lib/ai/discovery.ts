@@ -30,7 +30,7 @@ export interface DiscoveryConfig {
 }
 
 // 默认服务配置
-const DEFAULT_SERVICES: DiscoveryConfig['services'] = [
+const DEFAULT_SERVICES = [
   {
     provider: 'ollama' as AIProvider,
     name: 'Ollama',

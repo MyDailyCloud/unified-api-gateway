@@ -130,8 +130,11 @@ export function initPreloadAI(ipcRenderer: {
 
     // 监听流式响应
     onStreamChunk: (callback: (chunk: StreamChunk) => void) => {
-      const handler = (_event: unknown, data: { chunk: StreamChunk }) => {
-        callback(data.chunk);
+      const handler = (_event: unknown, ...args: unknown[]) => {
+        const data = args[0] as { chunk: StreamChunk };
+        if (data && data.chunk) {
+          callback(data.chunk);
+        }
       };
       ipcRenderer.on(AI_IPC_CHANNELS.CHAT_STREAM_CHUNK, handler);
       return () => ipcRenderer.removeListener(AI_IPC_CHANNELS.CHAT_STREAM_CHUNK, handler);
@@ -139,8 +142,11 @@ export function initPreloadAI(ipcRenderer: {
 
     // 监听流式结束
     onStreamEnd: (callback: (requestId: string) => void) => {
-      const handler = (_event: unknown, data: { requestId: string }) => {
-        callback(data.requestId);
+      const handler = (_event: unknown, ...args: unknown[]) => {
+        const data = args[0] as { requestId: string };
+        if (data && data.requestId) {
+          callback(data.requestId);
+        }
       };
       ipcRenderer.on(AI_IPC_CHANNELS.CHAT_STREAM_END, handler);
       return () => ipcRenderer.removeListener(AI_IPC_CHANNELS.CHAT_STREAM_END, handler);
@@ -148,8 +154,11 @@ export function initPreloadAI(ipcRenderer: {
 
     // 监听流式错误
     onStreamError: (callback: (requestId: string, error: string) => void) => {
-      const handler = (_event: unknown, data: { requestId: string; error: string }) => {
-        callback(data.requestId, data.error);
+      const handler = (_event: unknown, ...args: unknown[]) => {
+        const data = args[0] as { requestId: string; error: string };
+        if (data && data.requestId) {
+          callback(data.requestId, data.error);
+        }
       };
       ipcRenderer.on(AI_IPC_CHANNELS.CHAT_STREAM_ERROR, handler);
       return () => ipcRenderer.removeListener(AI_IPC_CHANNELS.CHAT_STREAM_ERROR, handler);

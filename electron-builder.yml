@@ -8,13 +8,14 @@ directories:
 
 files:
   - dist/**/*
-  - electron/**/*.js
+  - dist-electron/**/*
+  - electron/package.json
   - "!**/*.ts"
   - "!**/node_modules/**/*"
   - node_modules/**/*
 
 extraMetadata:
-  main: electron/main.js
+  main: dist-electron/electron/main.js
 
 asar: true
 compression: maximum

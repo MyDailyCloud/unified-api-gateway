@@ -380,6 +380,30 @@ export const RATE_LIMIT_PRESETS: Record<AIProvider, Partial<QueueConfig>> = {
     maxConcurrent: 5,
     rateLimit: { requests: 100, perMilliseconds: 60000 },
   },
+  together: {
+    maxConcurrent: 5,
+    rateLimit: { requests: 60, perMilliseconds: 60000 },
+  },
+  openrouter: {
+    maxConcurrent: 5,
+    rateLimit: { requests: 60, perMilliseconds: 60000 },
+  },
+  ollama: {
+    maxConcurrent: 1,
+    rateLimit: { requests: 10, perMilliseconds: 60000 },
+  },
+  lmstudio: {
+    maxConcurrent: 1,
+    rateLimit: { requests: 10, perMilliseconds: 60000 },
+  },
+  llamacpp: {
+    maxConcurrent: 1,
+    rateLimit: { requests: 10, perMilliseconds: 60000 },
+  },
+  vllm: {
+    maxConcurrent: 5,
+    rateLimit: { requests: 60, perMilliseconds: 60000 },
+  },
   custom: {
     maxConcurrent: 5,
     rateLimit: { requests: 60, perMilliseconds: 60000 },

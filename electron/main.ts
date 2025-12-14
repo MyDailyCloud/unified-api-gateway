@@ -1,9 +1,39 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import * as path from 'path';
+import { createElectronApp, createElectronStoreSecureStorage } from '../src/lib/ai/app/electron';
 
 let mainWindow: BrowserWindow | null = null;
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+
+async function initApp() {
+  // Initialize AI Backend
+  try {
+    // Dynamic import for ESM-only electron-store
+    const { default: Store } = await import('electron-store');
+    const store = new Store({
+      name: 'ai-gateway-config',
+    });
+    const secureStorage = createElectronStoreSecureStorage(store);
+
+    const aiApp = await createElectronApp({
+      userDataPath: app.getPath('userData'),
+      secureStorage,
+    });
+    
+    // Initialize IPC handlers
+    aiApp.initialize(ipcMain);
+    
+    // Load stored API keys and providers
+    await aiApp.loadApiKeysFromSecureStorage();
+    
+    console.log('AI Backend initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize AI Backend:', error);
+  }
+
+  createWindow();
+}
 
 async function createWindow() {
   mainWindow = new BrowserWindow({
@@ -18,7 +48,7 @@ async function createWindow() {
       sandbox: false,
     },
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-    show: false,
+    show: true,
     backgroundColor: '#1a1a2e',
   });
 
@@ -29,7 +59,8 @@ async function createWindow() {
     mainWindow.webContents.openDevTools();
   } else {
     // In production, load the built files
-    await mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    // Note: When running from dist-electron/electron/main.js, the renderer is at ../../dist/index.html
+    await mainWindow.loadFile(path.join(__dirname, '../../dist/index.html'));
   }
 
   mainWindow.once('ready-to-show', () => {
@@ -60,7 +91,7 @@ ipcMain.handle('app:getPath', (_, name: string) => {
   return app.getPath(name as any);
 });
 
-app.whenReady().then(createWindow);
+app.whenReady().then(initApp);
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {

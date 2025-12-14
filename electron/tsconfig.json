@@ -2,9 +2,9 @@
   "compilerOptions": {
     "target": "ES2020",
     "module": "commonjs",
-    "lib": ["ES2020"],
-    "outDir": ".",
-    "rootDir": ".",
+    "lib": ["ES2020", "DOM"],
+    "outDir": "../dist-electron",
+    "rootDir": "..",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -12,13 +12,21 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "declaration": false,
-    "declarationMap": false,
     "sourceMap": true,
     "baseUrl": "..",
     "paths": {
       "@/*": ["src/*"]
     }
   },
-  "include": ["*.ts", "env.d.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "*.ts",
+    "env.d.ts",
+    "../src/lib/ai/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules", 
+    "../src/lib/ai/**/*.test.ts",
+    "../src/lib/ai/ui/**/*", 
+    "../src/lib/ai/hooks/**/*"
+  ]
 }

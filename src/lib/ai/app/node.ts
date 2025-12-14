@@ -108,7 +108,7 @@ export async function createNodeApp(config: NodeAppConfig = {}): Promise<NodeApp
           console.warn(`Unknown provider: ${provider}`);
           continue;
       }
-      core.registerProviderWithAdapter(provider, adapter);
+      core.registerProviderWithAdapter(provider, adapter as any);
     }
   }
 

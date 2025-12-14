@@ -30,7 +30,7 @@ mac:
         - x64
         - arm64
   category: public.app-category.developer-tools
-  icon: build/icon.icns
+  # icon: build/icon.icns  # Uncomment after generating icons
   hardenedRuntime: true
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
@@ -58,7 +58,7 @@ win:
     - target: portable
       arch:
         - x64
-  icon: build/icon.ico
+  # icon: build/icon.ico  # Uncomment after generating icons
   artifactName: "${productName}-${version}-${os}-${arch}.${ext}"
 
 nsis:
@@ -66,9 +66,9 @@ nsis:
   perMachine: false
   allowToChangeInstallationDirectory: true
   deleteAppDataOnUninstall: false
-  installerIcon: build/icon.ico
-  uninstallerIcon: build/icon.ico
-  installerHeaderIcon: build/icon.ico
+  # installerIcon: build/icon.ico  # Uncomment after generating icons
+  # uninstallerIcon: build/icon.ico
+  # installerHeaderIcon: build/icon.ico
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: AI SDK Gateway
@@ -86,7 +86,7 @@ linux:
     - target: rpm
       arch:
         - x64
-  icon: build/icons
+  # icon: build/icons  # Uncomment after generating icons
   category: Development
   maintainer: AI SDK Team
   vendor: AI SDK

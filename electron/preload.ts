@@ -36,26 +36,7 @@ contextBridge.exposeInMainWorld('electron', {
 });
 
 // Type declarations for the exposed API
-declare global {
-  interface Window {
-    electron: {
-      app: {
-        getVersion: () => Promise<string>;
-        getPlatform: () => Promise<string>;
-        getPath: (name: string) => Promise<string>;
-      };
-      platform: NodeJS.Platform;
-      ipc: {
-        send: (channel: string, ...args: any[]) => void;
-        invoke: (channel: string, ...args: any[]) => Promise<any>;
-        on: (channel: string, callback: (...args: any[]) => void) => void;
-        once: (channel: string, callback: (...args: any[]) => void) => void;
-        removeListener: (channel: string, callback: (...args: any[]) => void) => void;
-        removeAllListeners: (channel: string) => void;
-      };
-    };
-  }
-}
+// See electron/env.d.ts for the Window interface definition
 
 // Notify that preload script has loaded
 console.log('Preload script loaded');

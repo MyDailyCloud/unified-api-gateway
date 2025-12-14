@@ -16,11 +16,11 @@ interface ElectronAPI {
   };
   platform: NodeJS.Platform;
   ipc: {
-    send: (channel: string, ...args: unknown[]) => void;
-    invoke: (channel: string, ...args: unknown[]) => Promise<unknown>;
-    on: (channel: string, callback: (...args: unknown[]) => void) => void;
-    once: (channel: string, callback: (...args: unknown[]) => void) => void;
-    removeListener: (channel: string, callback: (...args: unknown[]) => void) => void;
+    send: (channel: string, ...args: any[]) => void;
+    invoke: (channel: string, ...args: any[]) => Promise<any>;
+    on: (channel: string, callback: (...args: any[]) => void) => void;
+    once: (channel: string, callback: (...args: any[]) => void) => void;
+    removeListener: (channel: string, callback: (...args: any[]) => void) => void;
     removeAllListeners: (channel: string) => void;
   };
 }

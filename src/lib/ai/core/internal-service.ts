@@ -9,7 +9,7 @@ import type { UnifiedStorage } from '../storage/types';
 import { ConversationManager, createConversationManager } from '../models/conversation';
 import { MessageManager, createMessageManager } from '../models/message';
 import { ApiKeyManager, createApiKeyManager } from '../models/api-key';
-import { createCryptoProvider } from '../storage/encryption';
+import { createSimpleCryptoProvider } from '../storage/encryption';
 import type { AIProvider, ChatCompletionRequest as SDKChatRequest } from '../types';
 import type {
   InternalServiceConfig,
@@ -122,8 +122,8 @@ export class InternalService implements IInternalService {
     this.conversationManager = createConversationManager(storage);
     this.messageManager = createMessageManager(storage);
     
-    // 创建加密提供者
-    const cryptoProvider = createCryptoProvider();
+    // 创建同步加密提供者
+    const cryptoProvider = createSimpleCryptoProvider();
     this.apiKeyManager = createApiKeyManager(storage, cryptoProvider, encryptionKey);
   }
 

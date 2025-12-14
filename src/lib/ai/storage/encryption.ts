@@ -170,7 +170,7 @@ export async function createWebCryptoProvider(): Promise<CryptoProvider> {
 }
 
 /**
- * 自动选择加密提供者
+ * 自动选择加密提供者（异步）
  */
 export async function createCryptoProvider(): Promise<CryptoProvider> {
   // 检查是否在 Node.js 环境
@@ -184,6 +184,13 @@ export async function createCryptoProvider(): Promise<CryptoProvider> {
   }
   
   // 回退到简单加密
+  return createSimpleCryptoProvider();
+}
+
+/**
+ * 创建简单加密提供者（同步，适用于不需要强加密的场景）
+ */
+export function createSimpleCryptoProvider(): CryptoProvider {
   return {
     encrypt: async (text, key) => simpleEncrypt(text, key),
     decrypt: async (encrypted, key) => simpleDecrypt(encrypted, key),

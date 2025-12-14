@@ -7,14 +7,14 @@ export { openaiNormalizer, default as OpenAINormalizer } from './openai';
 export { anthropicNormalizer, default as AnthropicNormalizer } from './anthropic';
 export { googleNormalizer, default as GoogleNormalizer } from './google';
 export { cohereNormalizer, default as CohereNormalizer } from './cohere';
-export { ollamaNormalizer, default as OllamaNormalizer } from './ollama';
+export { ollamaNormalizer, ollamaGenerateNormalizer, default as OllamaNormalizer } from './ollama';
 export { llamacppNormalizer, default as LlamaCppNormalizer } from './llamacpp';
 
 import { openaiNormalizer } from './openai';
 import { anthropicNormalizer } from './anthropic';
 import { googleNormalizer } from './google';
 import { cohereNormalizer } from './cohere';
-import { ollamaNormalizer } from './ollama';
+import { ollamaNormalizer, ollamaGenerateNormalizer } from './ollama';
 import { llamacppNormalizer } from './llamacpp';
 import type { RequestNormalizer, RequestFormat } from '../types';
 
@@ -33,6 +33,8 @@ export function getNormalizer(format: RequestFormat): RequestNormalizer {
       return cohereNormalizer;
     case 'ollama':
       return ollamaNormalizer;
+    case 'ollama-generate':
+      return ollamaGenerateNormalizer;
     case 'llamacpp':
       return llamacppNormalizer;
     // OpenAI-compatible formats
@@ -63,6 +65,7 @@ export const normalizers: Record<RequestFormat, RequestNormalizer> = {
   google: googleNormalizer,
   cohere: cohereNormalizer,
   ollama: ollamaNormalizer,
+  'ollama-generate': ollamaGenerateNormalizer,
   llamacpp: llamacppNormalizer,
   // OpenAI-compatible formats
   mistral: openaiNormalizer,

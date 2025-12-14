@@ -6,10 +6,10 @@
 // HTTP 传输
 export {
   createHttpServer,
-  ApiRouter,
   createApiRouter,
-  InternalRouter,
   createInternalRouter,
+  ApiRouter,
+  InternalRouter,
   type HttpServerConfig,
   type HttpServerInstance,
   type ApiRouterConfig,
@@ -17,6 +17,10 @@ export {
   type HttpRequest,
   type HttpResponse,
 } from './http/server';
+
+// 重导出路由器类型
+export type { ApiRouterConfig as ExternalApiRouterConfig } from './http/api-router';
+export type { InternalRouterConfig as InternalApiRouterConfig } from './http/internal-router';
 
 // IPC 传输
 export {

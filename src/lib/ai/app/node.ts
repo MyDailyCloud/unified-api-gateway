@@ -19,7 +19,7 @@ export interface NodeAppConfig {
   providers?: Array<{
     provider: AIProvider;
     apiKey: string;
-    baseUrl?: string;
+    baseURL?: string;
   }>;
   /** 启动模式 */
   mode?: 'api-only' | 'internal-only' | 'full';
@@ -61,14 +61,14 @@ export async function createNodeApp(config: NodeAppConfig = {}): Promise<NodeApp
       createGLM,
     } = await import('../factory');
 
-    for (const { provider, apiKey, baseUrl } of config.providers) {
+    for (const { provider, apiKey, baseURL } of config.providers) {
       let adapter;
       switch (provider) {
         case 'openai':
-          adapter = createOpenAI({ apiKey, baseUrl });
+          adapter = createOpenAI({ apiKey, baseURL });
           break;
         case 'anthropic':
-          adapter = createAnthropic({ apiKey, baseUrl });
+          adapter = createAnthropic({ apiKey, baseURL });
           break;
         case 'google':
           adapter = createGoogle({ apiKey });
@@ -92,7 +92,7 @@ export async function createNodeApp(config: NodeAppConfig = {}): Promise<NodeApp
           console.warn(`Unknown provider: ${provider}`);
           continue;
       }
-      core.registerProvider(provider, adapter);
+      core.registerProviderWithAdapter(provider, adapter);
     }
   }
 

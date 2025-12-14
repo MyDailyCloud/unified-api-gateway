@@ -4,8 +4,8 @@
  */
 
 import type { AICore } from '../../core';
-import { ApiRouter, createApiRouter, type ApiRouterConfig, type HttpRequest, type HttpResponse } from './api-router';
-import { InternalRouter, createInternalRouter, type InternalRouterConfig } from './internal-router';
+import { ApiRouter, type ApiRouterConfig, type HttpRequest, type HttpResponse } from './api-router';
+import { InternalRouter, type InternalRouterConfig } from './internal-router';
 
 export interface HttpServerConfig {
   /** API 端口（对外服务） */
@@ -34,11 +34,25 @@ export interface HttpServerInstance {
 }
 
 /**
+ * 创建 API 路由器
+ */
+export function createApiRouter(aiService: InstanceType<typeof import('../../core/ai-service').AIService>, config?: ApiRouterConfig): ApiRouter {
+  return new ApiRouter(aiService, config);
+}
+
+/**
+ * 创建内部路由器
+ */
+export function createInternalRouter(internalService: InstanceType<typeof import('../../core/internal-service').InternalService>, config?: InternalRouterConfig): InternalRouter {
+  return new InternalRouter(internalService, config);
+}
+
+/**
  * 创建 HTTP 服务器
  */
 export function createHttpServer(core: AICore, config: HttpServerConfig = {}): HttpServerInstance {
-  const apiRouter = createApiRouter(core.ai, config.api);
-  const internalRouter = createInternalRouter(core.internal, config.internal);
+  const apiRouter = new ApiRouter(core.ai, config.api);
+  const internalRouter = new InternalRouter(core.internal, config.internal);
   
   const serverConfig = {
     apiPort: config.apiPort,

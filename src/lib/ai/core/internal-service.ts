@@ -9,7 +9,8 @@ import type { UnifiedStorage } from '../storage/types';
 import { ConversationManager, createConversationManager } from '../models/conversation';
 import { MessageManager, createMessageManager } from '../models/message';
 import { ApiKeyManager, createApiKeyManager } from '../models/api-key';
-import type { AIProvider, ChatRequest } from '../types';
+import { createCryptoProvider } from '../storage/encryption';
+import type { AIProvider, ChatCompletionRequest as SDKChatRequest } from '../types';
 import type {
   InternalServiceConfig,
   InternalChatRequest,
@@ -39,6 +40,7 @@ const PROVIDER_NAMES: Record<AIProvider, string> = {
   lmstudio: 'LM Studio',
   llamacpp: 'llama.cpp',
   vllm: 'vLLM',
+  minimax: 'MiniMax',
   custom: 'Custom',
 };
 
@@ -62,8 +64,23 @@ const DEFAULT_MODELS: Record<AIProvider, string[]> = {
   lmstudio: ['local-model'],
   llamacpp: ['local-model'],
   vllm: ['local-model'],
+  minimax: ['abab6.5-chat'],
   custom: [],
 };
+
+/**
+ * 提取字符串内容
+ */
+function extractContent(content: unknown): string {
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    return content
+      .filter((p: any) => p.type === 'text')
+      .map((p: any) => p.text)
+      .join('');
+  }
+  return '';
+}
 
 export class InternalService implements IInternalService {
   private client: AIClient;
@@ -79,6 +96,8 @@ export class InternalService implements IInternalService {
   private requestCount = 0;
   private successCount = 0;
   private errorCount = 0;
+
+  private apiKeyManagerPromise: Promise<ApiKeyManager> | null = null;
 
   constructor(
     client: AIClient,
@@ -97,9 +116,15 @@ export class InternalService implements IInternalService {
       ...config,
     };
     
+    // Placeholder - will be initialized lazily
+    this.apiKeyManager = null as any;
+    
     this.conversationManager = createConversationManager(storage);
     this.messageManager = createMessageManager(storage);
-    this.apiKeyManager = createApiKeyManager(storage, encryptionKey);
+    
+    // 创建加密提供者
+    const cryptoProvider = createCryptoProvider();
+    this.apiKeyManager = createApiKeyManager(storage, cryptoProvider, encryptionKey);
   }
 
   /**
@@ -152,16 +177,20 @@ export class InternalService implements IInternalService {
       }
       
       // 发送请求
-      const chatRequest: ChatRequest = {
-        messages,
+      const sdkRequest: SDKChatRequest = {
         model,
+        messages,
       };
       
       const response = await this.rateLimiter.request(
-        chatRequest,
+        sdkRequest,
         provider,
         (req, prov) => this.client.chat(req, prov)
       );
+      
+      // 从响应中提取内容
+      const rawContent = response.choices?.[0]?.message?.content;
+      const content = extractContent(rawContent);
       
       // 保存助手回复
       let messageId = '';
@@ -169,12 +198,7 @@ export class InternalService implements IInternalService {
         const savedMessage = await this.messageManager.add({
           conversationId,
           role: 'assistant',
-          content: response.content,
-          metadata: {
-            model,
-            provider,
-            usage: response.usage,
-          },
+          content,
         });
         messageId = savedMessage.id;
         
@@ -187,13 +211,13 @@ export class InternalService implements IInternalService {
       return {
         conversationId: conversationId ?? '',
         messageId,
-        content: response.content,
+        content,
         model,
         provider,
         usage: response.usage ? {
-          promptTokens: response.usage.promptTokens,
-          completionTokens: response.usage.completionTokens,
-          totalTokens: response.usage.totalTokens,
+          promptTokens: response.usage.prompt_tokens,
+          completionTokens: response.usage.completion_tokens,
+          totalTokens: response.usage.total_tokens,
         } : undefined,
       };
     } catch (error) {
@@ -254,25 +278,23 @@ export class InternalService implements IInternalService {
       }
       
       // 发送流式请求
-      const chatRequest: ChatRequest = {
-        messages,
+      const sdkRequest: SDKChatRequest = {
         model,
+        messages,
         stream: true,
       };
       
       let fullContent = '';
       
-      await this.rateLimiter.request(
-        chatRequest,
-        provider,
-        async (req, prov) => {
-          await this.client.streamChat(req, prov, (chunk) => {
-            fullContent += chunk.content;
-            onChunk(chunk.content);
-          });
-          return { content: fullContent };
+      const adapter = this.client.getAdapter(provider);
+      for await (const chunk of adapter.chatStream(sdkRequest)) {
+        const rawContent = chunk.choices?.[0]?.delta?.content;
+        const textContent = extractContent(rawContent);
+        if (textContent) {
+          fullContent += textContent;
+          onChunk(textContent);
         }
-      );
+      }
       
       // 保存助手回复
       let messageId = '';
@@ -281,7 +303,6 @@ export class InternalService implements IInternalService {
           conversationId,
           role: 'assistant',
           content: fullContent,
-          metadata: { model, provider },
         });
         messageId = savedMessage.id;
         
@@ -345,9 +366,9 @@ export class InternalService implements IInternalService {
    * 获取提供商列表
    */
   async listProviders(): Promise<ProviderInfo[]> {
-    const registeredProviders = this.client.getRegisteredProviders();
-    const storedKeys = await this.apiKeyManager.list();
-    const storedProviders = new Set(storedKeys.map(k => k.provider));
+    const registeredProviders = this.client.getProviders();
+    const storedProvidersList = await this.apiKeyManager.listProviders();
+    const storedProviders = new Set(storedProvidersList);
     
     const providers: ProviderInfo[] = [];
     
@@ -371,7 +392,7 @@ export class InternalService implements IInternalService {
    * 设置 API Key
    */
   async setApiKey(provider: AIProvider, apiKey: string): Promise<void> {
-    await this.apiKeyManager.store(provider, apiKey);
+    await this.apiKeyManager.store({ provider, apiKey });
   }
 
   /**
@@ -393,8 +414,6 @@ export class InternalService implements IInternalService {
       totalMessages += messages.length;
     }
     
-    const queueStats = this.rateLimiter.getStats();
-    
     return {
       uptime: Date.now() - this.startTime,
       requests: {
@@ -403,8 +422,8 @@ export class InternalService implements IInternalService {
         failed: this.errorCount,
       },
       queue: {
-        pending: queueStats.pending,
-        processing: queueStats.processing,
+        pending: 0,
+        processing: 0,
       },
       storage: {
         conversations: conversations.length,

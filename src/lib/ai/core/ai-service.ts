@@ -5,12 +5,12 @@
 
 import { AIClient } from '../client';
 import { ProviderRateLimiter } from '../queue';
-import type { AIProvider, ChatRequest } from '../types';
+import type { AIProvider, ChatCompletionRequest as SDKChatRequest } from '../types';
 import type {
   AIServiceConfig,
-  ChatCompletionRequest,
-  ChatCompletionResponse,
-  ChatCompletionChunk,
+  OpenAIChatCompletionRequest,
+  OpenAIChatCompletionResponse,
+  OpenAIChatCompletionChunk,
   ModelsResponse,
   ModelInfo,
   IAIService,
@@ -36,8 +36,23 @@ const PROVIDER_MODELS: Record<AIProvider, string[]> = {
   lmstudio: ['local-model'],
   llamacpp: ['local-model'],
   vllm: ['local-model'],
+  minimax: ['abab6.5-chat', 'abab5.5-chat'],
   custom: [],
 };
+
+/**
+ * 提取字符串内容
+ */
+function extractContent(content: unknown): string {
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    return content
+      .filter((p: any) => p.type === 'text')
+      .map((p: any) => p.text)
+      .join('');
+  }
+  return '';
+}
 
 export class AIService implements IAIService {
   private client: AIClient;
@@ -68,53 +83,56 @@ export class AIService implements IAIService {
   /**
    * 聊天补全 - OpenAI 兼容 API
    */
-  async chatCompletion(request: ChatCompletionRequest): Promise<ChatCompletionResponse> {
+  async chatCompletion(request: OpenAIChatCompletionRequest): Promise<OpenAIChatCompletionResponse> {
     this.requestCount++;
-    const startTime = Date.now();
 
     try {
       const { provider, model } = this.resolveModel(request.model);
       
-      const chatRequest: ChatRequest = {
+      const sdkRequest: SDKChatRequest = {
+        model,
         messages: request.messages.map(m => ({
           role: m.role,
           content: m.content,
         })),
-        model,
         temperature: request.temperature,
-        maxTokens: request.max_tokens ?? this.config.maxTokens,
-        topP: request.top_p,
-        frequencyPenalty: request.frequency_penalty,
-        presencePenalty: request.presence_penalty,
+        max_tokens: request.max_tokens ?? this.config.maxTokens,
+        top_p: request.top_p,
+        frequency_penalty: request.frequency_penalty,
+        presence_penalty: request.presence_penalty,
         stop: request.stop,
       };
 
       const response = await this.rateLimiter.request(
-        chatRequest,
+        sdkRequest,
         provider,
         (req, prov) => this.client.chat(req, prov)
       );
 
       this.successCount++;
 
+      // 从 SDK 响应转换为 OpenAI 格式
+      const rawContent = response.choices?.[0]?.message?.content;
+      const content = extractContent(rawContent);
+      const finishReason = response.choices?.[0]?.finish_reason ?? 'stop';
+
       return {
-        id: `chatcmpl-${this.generateId()}`,
+        id: response.id ?? `chatcmpl-${this.generateId()}`,
         object: 'chat.completion',
-        created: Math.floor(Date.now() / 1000),
-        model: request.model ?? this.config.defaultModel!,
+        created: response.created ?? Math.floor(Date.now() / 1000),
+        model: response.model ?? model,
         choices: [{
           index: 0,
           message: {
             role: 'assistant',
-            content: response.content,
+            content,
           },
-          finish_reason: response.finishReason === 'stop' ? 'stop' : 
-                        response.finishReason === 'length' ? 'length' : 'stop',
+          finish_reason: finishReason as 'stop' | 'length' | 'content_filter',
         }],
         usage: response.usage ? {
-          prompt_tokens: response.usage.promptTokens,
-          completion_tokens: response.usage.completionTokens,
-          total_tokens: response.usage.totalTokens,
+          prompt_tokens: response.usage.prompt_tokens,
+          completion_tokens: response.usage.completion_tokens,
+          total_tokens: response.usage.total_tokens,
         } : undefined,
       };
     } catch (error) {
@@ -127,8 +145,8 @@ export class AIService implements IAIService {
    * 流式聊天补全
    */
   async streamChatCompletion(
-    request: ChatCompletionRequest,
-    onChunk: (chunk: ChatCompletionChunk) => void
+    request: OpenAIChatCompletionRequest,
+    onChunk: (chunk: OpenAIChatCompletionChunk) => void
   ): Promise<void> {
     if (!this.config.enableStreaming) {
       throw new Error('Streaming is disabled');
@@ -137,19 +155,20 @@ export class AIService implements IAIService {
     this.requestCount++;
     const responseId = `chatcmpl-${this.generateId()}`;
     const created = Math.floor(Date.now() / 1000);
+    const model = request.model ?? this.config.defaultModel!;
 
     try {
-      const { provider, model } = this.resolveModel(request.model);
+      const { provider, model: resolvedModel } = this.resolveModel(request.model);
       
-      const chatRequest: ChatRequest = {
+      const sdkRequest: SDKChatRequest = {
+        model: resolvedModel,
         messages: request.messages.map(m => ({
           role: m.role,
           content: m.content,
         })),
-        model,
         temperature: request.temperature,
-        maxTokens: request.max_tokens ?? this.config.maxTokens,
-        topP: request.top_p,
+        max_tokens: request.max_tokens ?? this.config.maxTokens,
+        top_p: request.top_p,
         stream: true,
       };
 
@@ -158,7 +177,7 @@ export class AIService implements IAIService {
         id: responseId,
         object: 'chat.completion.chunk',
         created,
-        model: request.model ?? this.config.defaultModel!,
+        model,
         choices: [{
           index: 0,
           delta: { role: 'assistant' },
@@ -166,48 +185,41 @@ export class AIService implements IAIService {
         }],
       });
 
-      await this.rateLimiter.request(
-        chatRequest,
-        provider,
-        async (req, prov) => {
-          return new Promise<any>((resolve, reject) => {
-            let fullContent = '';
-            
-            this.client.streamChat(
-              req,
-              prov,
-              (chunk) => {
-                fullContent += chunk.content;
-                onChunk({
-                  id: responseId,
-                  object: 'chat.completion.chunk',
-                  created,
-                  model: request.model ?? this.config.defaultModel!,
-                  choices: [{
-                    index: 0,
-                    delta: { content: chunk.content },
-                    finish_reason: null,
-                  }],
-                });
-              }
-            ).then(() => {
-              // 发送结束 chunk
-              onChunk({
-                id: responseId,
-                object: 'chat.completion.chunk',
-                created,
-                model: request.model ?? this.config.defaultModel!,
-                choices: [{
-                  index: 0,
-                  delta: {},
-                  finish_reason: 'stop',
-                }],
-              });
-              resolve({ content: fullContent });
-            }).catch(reject);
-          });
+      const adapter = this.client.getAdapter(provider);
+      
+      // 使用适配器的流式方法 (chatStream)
+      for await (const chunk of adapter.chatStream(sdkRequest)) {
+        const content = chunk.choices?.[0]?.delta?.content;
+        if (content) {
+          const textContent = extractContent(content);
+          if (textContent) {
+            onChunk({
+              id: responseId,
+              object: 'chat.completion.chunk',
+              created,
+              model,
+              choices: [{
+                index: 0,
+                delta: { content: textContent },
+                finish_reason: null,
+              }],
+            });
+          }
         }
-      );
+      }
+
+      // 发送结束 chunk
+      onChunk({
+        id: responseId,
+        object: 'chat.completion.chunk',
+        created,
+        model,
+        choices: [{
+          index: 0,
+          delta: {},
+          finish_reason: 'stop',
+        }],
+      });
 
       this.successCount++;
     } catch (error) {
@@ -224,7 +236,7 @@ export class AIService implements IAIService {
     const now = Math.floor(Date.now() / 1000);
 
     // 获取已注册的提供商
-    const registeredProviders = this.client.getRegisteredProviders();
+    const registeredProviders = this.client.getProviders();
 
     for (const provider of registeredProviders) {
       const providerModels = PROVIDER_MODELS[provider] || [];

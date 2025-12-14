@@ -10,6 +10,7 @@ import { generateEncryptionKey } from '../models/api-key';
 import { AIService } from './ai-service';
 import { InternalService } from './internal-service';
 import type { AICoreConfig, AIServiceConfig, InternalServiceConfig } from './types';
+import type { AIProvider, ProviderConfig, AIAdapter } from '../types';
 
 export class AICore {
   /** 对外 AI 服务（OpenAI 兼容 API） */
@@ -73,20 +74,25 @@ export class AICore {
   }
 
   /**
-   * 注册提供商
+   * 注册提供商（使用 ProviderConfig）
    */
-  registerProvider(
-    provider: Parameters<AIClient['registerProvider']>[0],
-    adapter: Parameters<AIClient['registerProvider']>[1]
-  ) {
-    this.client.registerProvider(provider, adapter);
+  registerProvider(config: ProviderConfig): void {
+    this.client.registerProvider(config);
+  }
+
+  /**
+   * 使用适配器注册提供商
+   */
+  registerProviderWithAdapter(provider: AIProvider, adapter: AIAdapter): void {
+    // 直接设置适配器
+    (this.client as any).adapters.set(provider, adapter);
   }
 
   /**
    * 获取已注册的提供商
    */
-  getRegisteredProviders() {
-    return this.client.getRegisteredProviders();
+  getRegisteredProviders(): AIProvider[] {
+    return this.client.getProviders();
   }
 
   /**

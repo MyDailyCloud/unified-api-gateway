@@ -115,6 +115,48 @@
 | **LocalAI** | OpenAI兼容 | 自定义 | 开源本地 AI |
 | **Custom** | 可配置 | 自定义 | 任意兼容 API |
 
+## 多模态能力矩阵 / Multimodal Capability Matrix
+
+以下表格展示了各提供商支持的多模态能力：
+
+| 提供商 | 对话 | 流式 | 文本嵌入 | 图像嵌入 | 视觉理解 | 语音转录 | 语音合成 | 图像生成 | 工具调用 | 重排序 |
+|--------|:----:|:----:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|:------:|
+| **OpenAI** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| **Anthropic** | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| **Google** | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ |
+| **Azure OpenAI** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| **Mistral** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
+| **Cohere** | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
+| **Groq** | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
+| **Cerebras** | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **GLM** | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ |
+| **DeepSeek** | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| **Moonshot** | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| **Qwen** | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ |
+
+### 能力说明 / Capability Notes
+
+- **文本嵌入 (Text Embedding)**: 将文本转换为向量表示，用于语义搜索、聚类等
+- **图像嵌入 (Image Embedding)**: 将图像转换为向量，仅 Cohere embed-v4 支持多模态嵌入
+- **视觉理解 (Vision)**: 分析和理解图像内容的能力
+- **语音转录 (Transcription)**: 将音频转换为文本 (STT)
+- **语音合成 (Speech)**: 将文本转换为音频 (TTS)
+- **图像生成 (Image Generation)**: 根据文本描述生成图像
+- **重排序 (Rerank)**: 根据查询重新排序文档相关性，仅 Cohere 支持
+
+### 推荐模型 / Recommended Models
+
+| 能力 | 推荐提供商 | 推荐模型 | 备注 |
+|------|------------|----------|------|
+| 文本嵌入 | OpenAI | `text-embedding-3-small` | 性价比最高 |
+| 文本嵌入 | Mistral | `mistral-embed` | 欧洲合规 |
+| 多模态嵌入 | Cohere | `embed-v4.0` | 支持文本+图像 |
+| 语音转录 | OpenAI | `whisper-1` | 多语言支持最好 |
+| 语音转录 | Mistral | `voxtral-mini-transcribe` | 低延迟 |
+| 语音合成 | OpenAI | `tts-1-hd` | 最自然音质 |
+| 图像生成 | OpenAI | `dall-e-3` | 最高质量 |
+| 重排序 | Cohere | `rerank-v4.0-pro` | 唯一选择 |
+
 ## 快速开始 / Quick Start
 
 ### 1. 基础使用
@@ -304,8 +346,102 @@ router.route('deepseek-chat');    // { provider: 'deepseek', model: 'deepseek-ch
 
 ### 多模态支持 / Multimodal Support
 
+SDK 支持丰富的多模态能力，包括文本嵌入、图像嵌入、视觉理解、语音转录、语音合成、图像生成和重排序。
+
+#### 查询提供商能力 / Check Provider Capabilities
+
 ```typescript
-import type { Message, ContentPart } from '@/lib/ai';
+import { AIClient } from '@/lib/ai';
+
+const client = new AIClient();
+client.registerProvider({ provider: 'openai', apiKey: 'sk-xxx' });
+
+// 获取能力信息
+const caps = client.getCapabilities('openai');
+console.log(caps);
+// {
+//   chat: true,
+//   streaming: true,
+//   embedding: true,
+//   vision: true,
+//   transcription: true,
+//   speech: true,
+//   imageGeneration: true,
+//   tools: true,
+//   rerank: false,
+//   ocr: false,
+// }
+
+// 条件使用
+if (caps.embedding) {
+  const embedding = await client.embed({ model: 'text-embedding-3-small', input: 'Hello' }, 'openai');
+}
+```
+
+#### 文本嵌入 / Text Embedding
+
+```typescript
+// OpenAI 嵌入
+const openaiEmbed = await client.embed({
+  model: 'text-embedding-3-small',
+  input: 'Hello world',
+  dimensions: 512,  // 可选: 指定输出维度
+}, 'openai');
+
+console.log(openaiEmbed.data[0].embedding); // number[]
+
+// Mistral 嵌入
+const mistralEmbed = await client.embed({
+  model: 'mistral-embed',
+  input: ['Text 1', 'Text 2'],  // 支持批量
+}, 'mistral');
+
+// Cohere 嵌入 (带 input_type)
+const cohereEmbed = await client.embed({
+  model: 'embed-v4.0',
+  input: 'Search query',
+  input_type: 'search_query',  // search_document | search_query | classification | clustering
+  embedding_types: ['float', 'int8'],  // 可选: 多种编码格式
+}, 'cohere');
+```
+
+#### 多模态嵌入 / Multimodal Embedding (Cohere)
+
+Cohere embed-v4.0 支持同时嵌入文本和图像：
+
+```typescript
+// 纯图像嵌入
+const imageEmbed = await client.embed({
+  model: 'embed-v4.0',
+  input_type: 'search_document',
+  images: ['data:image/png;base64,...'],  // Base64 编码的图像
+}, 'cohere');
+
+// 混合文本+图像嵌入
+const multimodalEmbed = await client.embed({
+  model: 'embed-v4.0',
+  input_type: 'search_document',
+  inputs: [
+    {
+      content: [
+        { type: 'text', text: 'A beautiful sunset over the ocean' },
+        { type: 'image_url', image_url: 'data:image/png;base64,...' },
+      ],
+    },
+    {
+      content: [
+        { type: 'text', text: 'Mountain landscape' },
+        { type: 'image_url', image_url: 'https://example.com/mountain.jpg' },
+      ],
+    },
+  ],
+}, 'cohere');
+```
+
+#### 视觉理解 / Vision
+
+```typescript
+import type { Message } from '@/lib/ai';
 
 // 发送包含图片的消息
 const message: Message = {
@@ -315,12 +451,224 @@ const message: Message = {
     { 
       type: 'image_url', 
       image_url: { 
-        url: 'data:image/png;base64,...',
-        detail: 'high' 
+        url: 'data:image/png;base64,...',  // 或 https://... URL
+        detail: 'high',  // auto | low | high
       } 
     },
   ],
 };
+
+const response = await client.chat({
+  model: 'gpt-4o',  // 或 claude-sonnet-4-5, gemini-2.5-pro 等
+  messages: [message],
+}, 'openai');
+```
+
+#### 语音转录 / Transcription (STT)
+
+```typescript
+// OpenAI Whisper
+const openaiTranscript = await client.transcribe({
+  model: 'whisper-1',
+  file: audioBlob,  // File | Blob
+  language: 'en',   // 可选: 指定语言
+  response_format: 'json',  // json | text | srt | verbose_json | vtt
+  timestamp_granularities: ['word', 'segment'],  // 可选: 时间戳粒度
+}, 'openai');
+
+console.log(openaiTranscript.text);
+
+// Mistral Voxtral
+const mistralTranscript = await client.transcribe({
+  model: 'voxtral-mini-transcribe',  // 或 voxtral-small
+  file: audioBlob,
+  language: 'auto',  // 自动检测语言
+}, 'mistral');
+
+// Groq Whisper (超快速)
+const groqTranscript = await client.transcribe({
+  model: 'whisper-large-v3',
+  file: audioBlob,
+}, 'groq');
+```
+
+#### 语音合成 / Speech Synthesis (TTS)
+
+```typescript
+const speech = await client.speak({
+  model: 'tts-1-hd',  // tts-1 | tts-1-hd
+  input: 'Hello, this is a test of text to speech.',
+  voice: 'alloy',  // alloy | echo | fable | onyx | nova | shimmer
+  response_format: 'mp3',  // mp3 | opus | aac | flac | wav | pcm
+  speed: 1.0,  // 0.25 - 4.0
+}, 'openai');
+
+// 播放音频
+const audioBlob = new Blob([speech.audio], { type: speech.contentType });
+const audioUrl = URL.createObjectURL(audioBlob);
+const audio = new Audio(audioUrl);
+audio.play();
+
+// 下载音频
+const a = document.createElement('a');
+a.href = audioUrl;
+a.download = 'speech.mp3';
+a.click();
+```
+
+#### 图像生成 / Image Generation
+
+```typescript
+// OpenAI DALL-E 3
+const dalleImage = await client.generateImage({
+  model: 'dall-e-3',
+  prompt: 'A beautiful sunset over mountains, oil painting style',
+  size: '1024x1024',  // 1024x1024 | 1792x1024 | 1024x1792
+  quality: 'hd',  // standard | hd
+  style: 'vivid',  // vivid | natural
+  n: 1,
+}, 'openai');
+
+console.log(dalleImage.data[0].url);  // 图像 URL
+console.log(dalleImage.data[0].revised_prompt);  // DALL-E 修改后的提示词
+
+// Google Gemini
+const geminiImage = await client.generateImage({
+  model: 'gemini-2.0-flash-exp',
+  prompt: 'Abstract art in vibrant colors',
+}, 'google');
+
+// GLM CogView
+const glmImage = await client.generateImage({
+  model: 'cogview-3',
+  prompt: '中国山水画风格的日落',
+}, 'glm');
+```
+
+#### 重排序 / Rerank (Cohere Only)
+
+重排序用于根据查询重新排序文档的相关性，常用于 RAG 系统：
+
+```typescript
+const reranked = await client.rerank({
+  model: 'rerank-v4.0-pro',
+  query: 'What is the capital of the United States?',
+  documents: [
+    'Washington D.C. is the capital of the United States.',
+    'New York is the largest city in the United States.',
+    'The White House is located in Washington D.C.',
+    'Los Angeles is on the west coast.',
+  ],
+  top_n: 3,  // 返回前 N 个结果
+  return_documents: true,  // 是否返回文档内容
+}, 'cohere');
+
+console.log(reranked.results);
+// [
+//   { index: 0, relevance_score: 0.98, document: 'Washington D.C. is...' },
+//   { index: 2, relevance_score: 0.85, document: 'The White House...' },
+//   { index: 1, relevance_score: 0.42, document: 'New York is...' },
+// ]
+
+// 在 RAG 中使用
+const documents = await vectorSearch(query, 20);  // 先召回 20 个
+const reranked = await client.rerank({
+  model: 'rerank-v4.0-pro',
+  query: query,
+  documents: documents.map(d => d.content),
+  top_n: 5,
+}, 'cohere');
+const topDocs = reranked.results.map(r => documents[r.index]);
+```
+
+### 类型参考 / Type Reference
+
+```typescript
+// 嵌入请求
+interface EmbeddingRequest {
+  model: string;
+  input: string | string[];
+  dimensions?: number;
+  encoding_format?: 'float' | 'base64';
+  // Cohere 专用
+  input_type?: 'search_document' | 'search_query' | 'classification' | 'clustering';
+  embedding_types?: ('float' | 'int8' | 'uint8' | 'binary' | 'ubinary')[];
+  images?: string[];  // Base64 图像
+  inputs?: Array<{
+    content: Array<
+      | { type: 'text'; text: string }
+      | { type: 'image_url'; image_url: string }
+    >;
+  }>;
+}
+
+// 图像生成请求
+interface ImageGenerationRequest {
+  model: string;
+  prompt: string;
+  n?: number;
+  size?: string;
+  quality?: 'standard' | 'hd';
+  style?: 'vivid' | 'natural';
+  response_format?: 'url' | 'b64_json';
+}
+
+// 语音合成请求
+interface SpeechRequest {
+  model: string;
+  input: string;
+  voice: string;
+  response_format?: 'mp3' | 'opus' | 'aac' | 'flac' | 'wav' | 'pcm';
+  speed?: number;
+}
+
+// 语音转录请求
+interface TranscriptionRequest {
+  model: string;
+  file: File | Blob;
+  language?: string;
+  prompt?: string;
+  response_format?: 'json' | 'text' | 'srt' | 'verbose_json' | 'vtt';
+  temperature?: number;
+  timestamp_granularities?: ('word' | 'segment')[];
+}
+
+// 重排序请求 (Cohere)
+interface RerankRequest {
+  model: string;
+  query: string;
+  documents: string[];
+  top_n?: number;
+  max_tokens_per_doc?: number;
+  return_documents?: boolean;
+}
+
+// 重排序响应
+interface RerankResponse {
+  id: string;
+  results: Array<{
+    index: number;
+    relevance_score: number;
+    document?: string;
+  }>;
+  meta?: {
+    billed_units?: { search_units: number };
+  };
+}
+
+// 适配器能力
+interface AdapterCapabilities {
+  chat: boolean;
+  streaming: boolean;
+  embedding?: boolean;
+  vision?: boolean;
+  transcription?: boolean;
+  speech?: boolean;
+  imageGeneration?: boolean;
+  tools?: boolean;
+  rerank?: boolean;
+  ocr?: boolean;
+}
 ```
 
 ### 中间件系统 / Middleware System

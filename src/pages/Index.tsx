@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
@@ -20,7 +22,8 @@ import {
   Coins,
   Radio,
   Route,
-  Shuffle
+  Shuffle,
+  Settings
 } from "lucide-react";
 
 // Provider categories
@@ -696,13 +699,23 @@ export default function Index() {
 
       {/* Footer */}
       <footer className="border-t border-border/40 py-8">
-        <div className="container mx-auto px-4 text-center">
-          <div className="mb-2 text-2xl font-bold">
-            Any2Any<span className="text-primary"> API</span>
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+            <div className="text-center sm:text-left">
+              <div className="mb-1 text-xl font-bold">
+                Any2Any<span className="text-primary"> API</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                任意 AI API 格式互转网关
+              </p>
+            </div>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/admin" className="gap-2">
+                <Settings className="h-4 w-4" />
+                Admin Dashboard
+              </Link>
+            </Button>
           </div>
-          <p className="text-sm text-muted-foreground">
-            任意 AI API 格式互转网关 — 为多 AI 应用提供完美的底层架构支持
-          </p>
         </div>
       </footer>
     </div>

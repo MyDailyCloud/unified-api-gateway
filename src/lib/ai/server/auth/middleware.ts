@@ -254,16 +254,39 @@ export const ROUTE_PERMISSIONS: Record<string, RoutePermission> = {
   // 公开路由
   'GET /health': { roles: ['admin', 'anonymous'], allowAnonymous: true },
   'GET /v1/models': { roles: ['admin', 'anonymous'], allowAnonymous: true },
+  'GET /v1/stats': { roles: ['admin', 'anonymous'], allowAnonymous: true },
   
   // 用户路由（匿名可访问已配置的模型）
   'POST /v1/chat/completions': { roles: ['admin', 'anonymous'], allowAnonymous: true },
   'GET /internal/providers': { roles: ['admin', 'anonymous'], allowAnonymous: true },
   'POST /internal/chat': { roles: ['admin', 'anonymous'], allowAnonymous: true },
   
-  // Admin 路由
+  // 认证路由（公开）
+  'POST /internal/auth/login': { roles: ['admin', 'anonymous'], allowAnonymous: true },
+  'POST /internal/auth/logout': { roles: ['admin', 'anonymous'], allowAnonymous: true },
+  'GET /internal/auth/status': { roles: ['admin', 'anonymous'], allowAnonymous: true },
+  'GET /internal/auth/me': { roles: ['admin', 'anonymous'], allowAnonymous: true },
+  
+  // Admin 路由 - Provider 管理
   'POST /internal/providers/:provider/key': { roles: ['admin'], requireAuth: true },
   'DELETE /internal/providers/:provider/key': { roles: ['admin'], requireAuth: true },
+  
+  // Admin 路由 - 认证管理
   'POST /internal/auth/change-password': { roles: ['admin'], requireAuth: true },
+  
+  // Admin 路由 - Gateway Key 管理
+  'GET /internal/gateway-keys': { roles: ['admin'], requireAuth: true },
+  'POST /internal/gateway-keys': { roles: ['admin'], requireAuth: true },
+  'GET /internal/gateway-keys/stats': { roles: ['admin'], requireAuth: true },
+  'GET /internal/gateway-keys/:id': { roles: ['admin'], requireAuth: true },
+  'PUT /internal/gateway-keys/:id': { roles: ['admin'], requireAuth: true },
+  'PATCH /internal/gateway-keys/:id': { roles: ['admin'], requireAuth: true },
+  'DELETE /internal/gateway-keys/:id': { roles: ['admin'], requireAuth: true },
+  'POST /internal/gateway-keys/:id/regenerate': { roles: ['admin'], requireAuth: true },
+  'POST /internal/gateway-keys/:id/enable': { roles: ['admin'], requireAuth: true },
+  'POST /internal/gateway-keys/:id/disable': { roles: ['admin'], requireAuth: true },
+  
+  // Admin 路由 - 统计
   'GET /internal/stats': { roles: ['admin'], requireAuth: true },
 };
 

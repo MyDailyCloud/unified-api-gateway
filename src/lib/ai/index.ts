@@ -51,6 +51,62 @@ export {
   type ModelRouter,
 } from './registry';
 
+// 核心层
+export {
+  AICore,
+  createAICore,
+  AIService,
+  InternalService,
+  type AICoreConfig,
+  type AIServiceConfig,
+  type InternalServiceConfig,
+  type ChatCompletionRequest,
+  type ChatCompletionResponse,
+  type ChatCompletionChunk,
+  type ModelsResponse,
+  type ModelInfo,
+  type InternalChatRequest,
+  type InternalChatResponse,
+  type ProviderInfo,
+  type StatsResponse,
+  type IAIService,
+  type IInternalService,
+} from './core';
+
+// 传输层
+export {
+  createHttpServer,
+  ApiRouter,
+  createApiRouter,
+  InternalRouter,
+  createInternalRouter,
+  IpcMainBridge,
+  IpcRendererBridge,
+  createIpcMainBridge,
+  createIpcRendererBridge,
+  IPC_CHANNELS,
+  type HttpServerConfig,
+  type HttpServerInstance,
+  type ApiRouterConfig,
+  type InternalRouterConfig,
+  type HttpRequest,
+  type HttpResponse,
+  type IpcBridgeConfig,
+} from './transport';
+
+// 应用启动器
+export {
+  createNodeApp,
+  startNodeServer,
+  createElectronApp,
+  createKeytarSecureStorage,
+  createElectronStoreSecureStorage,
+  type NodeAppConfig,
+  type NodeAppInstance,
+  type ElectronAppConfig,
+  type ElectronAppInstance,
+} from './app';
+
 // 中间件
 export {
   MiddlewareManager,

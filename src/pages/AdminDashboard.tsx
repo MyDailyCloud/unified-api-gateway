@@ -5,7 +5,7 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, LogOut, Settings, Shield, Key, User } from 'lucide-react';
+import { ArrowLeft, LogOut, Settings, Shield, Key, User, Activity } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -17,6 +17,7 @@ import {
   LoginForm, 
   ChangePasswordDialog, 
   GatewayKeyManager,
+  RequestLogViewer,
   AuthProvider,
 } from '@/lib/ai/ui';
 
@@ -127,10 +128,14 @@ function AdminDashboardContent() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className="grid w-full max-w-lg grid-cols-3">
             <TabsTrigger value="keys" className="gap-2">
               <Key className="h-4 w-4" />
               API Keys
+            </TabsTrigger>
+            <TabsTrigger value="logs" className="gap-2">
+              <Activity className="h-4 w-4" />
+              Logs
             </TabsTrigger>
             <TabsTrigger value="settings" className="gap-2">
               <Settings className="h-4 w-4" />
@@ -140,6 +145,10 @@ function AdminDashboardContent() {
           
           <TabsContent value="keys" className="space-y-6">
             <GatewayKeyManager />
+          </TabsContent>
+          
+          <TabsContent value="logs" className="space-y-6">
+            <RequestLogViewer />
           </TabsContent>
           
           <TabsContent value="settings" className="space-y-6">

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { VersionInfo } from "@/components/VersionInfo";
 import { 
   ArrowLeftRight,
   Layers, 
@@ -715,6 +716,11 @@ export default function Index() {
                 Admin Dashboard
               </Link>
             </Button>
+          </div>
+          
+          {/* Version Info */}
+          <div className="mt-6 border-t border-border/30 pt-6">
+            <VersionInfo />
           </div>
         </div>
       </footer>

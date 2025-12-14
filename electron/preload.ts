@@ -12,6 +12,13 @@ contextBridge.exposeInMainWorld('electron', {
   // Platform info
   platform: process.platform,
   
+  // System info
+  system: {
+    getVersionInfo: () => ipcRenderer.invoke('system:getVersionInfo'),
+    getHealthStatus: () => ipcRenderer.invoke('system:getHealthStatus'),
+    healthCheck: () => ipcRenderer.invoke('system:health-check'),
+  },
+  
   // IPC communication
   ipc: {
     send: (channel: string, ...args: any[]) => {

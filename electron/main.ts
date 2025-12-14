@@ -16,6 +16,18 @@ interface HealthCheckResult {
     electronReady: boolean;
     backendInit: boolean;
     ipcReady: boolean;
+    storageReady: boolean;
+    providerRegistration: boolean;
+  };
+  details: {
+    storage?: {
+      type: string;
+      testPassed: boolean;
+    };
+    providers?: {
+      count: number;
+      registered: string[];
+    };
   };
   uptime: number;
   memory: NodeJS.MemoryUsage;
@@ -62,7 +74,10 @@ async function runHealthCheck(): Promise<HealthCheckResult> {
       electronReady: false,
       backendInit: false,
       ipcReady: false,
+      storageReady: false,
+      providerRegistration: false,
     },
+    details: {},
     uptime: process.uptime(),
     memory: process.memoryUsage(),
     version: app.getVersion(),
@@ -81,6 +96,41 @@ async function runHealthCheck(): Promise<HealthCheckResult> {
     
     // Check IPC is ready (backend registers handlers)
     result.checks.ipcReady = backendSuccess && aiAppInstance !== null;
+    
+    // Check storage functionality
+    if (aiAppInstance) {
+      try {
+        // Test storage by attempting to list stored keys
+        const storedProviders = await aiAppInstance.listStoredKeyProviders();
+        result.checks.storageReady = true;
+        result.details.storage = {
+          type: 'sqlite',
+          testPassed: true,
+        };
+      } catch (storageError) {
+        result.checks.storageReady = false;
+        result.details.storage = {
+          type: 'sqlite',
+          testPassed: false,
+        };
+      }
+      
+      // Check provider registration
+      try {
+        const providers = aiAppInstance.getProviders();
+        result.checks.providerRegistration = providers.length > 0;
+        result.details.providers = {
+          count: providers.length,
+          registered: providers.map(p => p.name),
+        };
+      } catch (providerError) {
+        result.checks.providerRegistration = false;
+        result.details.providers = {
+          count: 0,
+          registered: [],
+        };
+      }
+    }
     
     // Cleanup
     if (aiAppInstance) {
@@ -161,6 +211,7 @@ ipcMain.handle('app:getPath', (_, name: string) => {
 
 // Health check IPC handler
 ipcMain.handle('system:health-check', async () => {
+  const providers = aiAppInstance?.getProviders() || [];
   return {
     status: backendInitialized ? 'ok' : 'error',
     initialized: backendInitialized,
@@ -170,6 +221,47 @@ ipcMain.handle('system:health-check', async () => {
     platform: process.platform,
     node: process.version,
     electron: process.versions.electron,
+    storage: {
+      type: 'sqlite',
+      ready: backendInitialized,
+    },
+    providers: {
+      count: providers.length,
+      registered: providers.map(p => p.name),
+    },
+  };
+});
+
+// Version info IPC handler
+ipcMain.handle('system:getVersionInfo', () => {
+  return {
+    app: app.getVersion(),
+    electron: process.versions.electron,
+    chrome: process.versions.chrome,
+    node: process.version,
+    platform: process.platform,
+    arch: process.arch,
+  };
+});
+
+// Health status IPC handler
+ipcMain.handle('system:getHealthStatus', async () => {
+  const providers = aiAppInstance?.getProviders() || [];
+  let storedProviders: string[] = [];
+  
+  try {
+    storedProviders = aiAppInstance ? await aiAppInstance.listStoredKeyProviders() : [];
+  } catch {
+    // Ignore errors
+  }
+  
+  return {
+    initialized: backendInitialized,
+    storage: backendInitialized ? {
+      type: 'sqlite',
+      storedKeys: storedProviders.length,
+    } : null,
+    providers: providers.map(p => p.name),
   };
 });
 

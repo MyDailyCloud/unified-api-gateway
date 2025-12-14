@@ -52,8 +52,11 @@ export interface OllamaChatResponse {
   message: {
     role: 'assistant';
     content: string;
+    thinking?: string; // For reasoning models
+    tool_calls?: OllamaToolCall[];
   };
   done: boolean;
+  done_reason?: 'stop' | 'length' | 'load';
   total_duration?: number;
   load_duration?: number;
   prompt_eval_count?: number;
@@ -62,16 +65,53 @@ export interface OllamaChatResponse {
   eval_duration?: number;
 }
 
+export interface OllamaToolCall {
+  function: {
+    name: string;
+    arguments: Record<string, unknown>;
+  };
+}
+
 export interface OllamaStreamChunk {
   model: string;
   created_at: string;
   message: {
     role: 'assistant';
     content: string;
+    thinking?: string;
   };
   done: boolean;
+  done_reason?: string;
   total_duration?: number;
   eval_count?: number;
+}
+
+// Generate API types (for /api/generate endpoint)
+export interface OllamaGenerateRequest {
+  model: string;
+  prompt: string;
+  system?: string;
+  stream?: boolean;
+  format?: 'json';
+  options?: OllamaOptions;
+  context?: number[]; // Conversation context from previous response
+  keep_alive?: string | number;
+}
+
+export interface OllamaGenerateResponse {
+  model: string;
+  created_at: string;
+  response: string;
+  thinking?: string;
+  done: boolean;
+  done_reason?: string;
+  context?: number[];
+  total_duration?: number;
+  load_duration?: number;
+  prompt_eval_count?: number;
+  prompt_eval_duration?: number;
+  eval_count?: number;
+  eval_duration?: number;
 }
 
 // ============================================================================

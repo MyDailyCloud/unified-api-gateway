@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   ArrowLeftRight,
@@ -185,6 +186,7 @@ const coreAdvantages = [
 
 export default function Index() {
   const [activeTab, setActiveTab] = useState("gateway");
+  const [hoveredCell, setHoveredCell] = useState<{ row: number; col: number } | null>(null);
 
   return (
     <div className="min-h-screen bg-background">
@@ -355,50 +357,92 @@ export default function Index() {
           </p>
           
           <div className="mx-auto max-w-4xl overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr>
-                  <th className="p-3 text-left text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <span className="font-medium">INPUT</span>
-                      <ArrowRight className="h-3 w-3" />
-                      <span className="font-medium">OUTPUT</span>
-                    </div>
-                  </th>
-                  {independentFormats.map((f) => (
-                    <th key={f.id} className="p-3 text-center">
-                      <Badge 
-                        variant="outline" 
-                        className={`${f.borderColor} ${f.bgColor} ${f.textColor}`}
-                      >
-                        {f.name}
-                      </Badge>
+            <TooltipProvider delayDuration={100}>
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    <th className="p-3 text-left text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <span className="font-medium">INPUT</span>
+                        <ArrowRight className="h-3 w-3" />
+                        <span className="font-medium">OUTPUT</span>
+                      </div>
                     </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {independentFormats.map((input) => (
-                  <tr key={input.id} className="border-t border-border/50 transition-colors hover:bg-muted/50">
-                    <td className="p-3">
-                      <Badge 
-                        variant="outline" 
-                        className={`${input.borderColor} ${input.bgColor} ${input.textColor}`}
+                    {independentFormats.map((f, colIndex) => (
+                      <th 
+                        key={f.id} 
+                        className={`p-3 text-center transition-all duration-200 ${
+                          hoveredCell?.col === colIndex ? 'bg-primary/10' : ''
+                        }`}
                       >
-                        {input.name}
-                      </Badge>
-                    </td>
-                    {independentFormats.map((output) => (
-                      <td key={output.id} className="p-3 text-center">
-                        <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 transition-colors hover:bg-primary/20">
-                          <Check className="h-4 w-4 text-primary" />
-                        </div>
-                      </td>
+                        <Badge 
+                          variant="outline" 
+                          className={`${f.borderColor} ${f.bgColor} ${f.textColor} transition-transform duration-200 ${
+                            hoveredCell?.col === colIndex ? 'scale-105' : ''
+                          }`}
+                        >
+                          {f.name}
+                        </Badge>
+                      </th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {independentFormats.map((input, rowIndex) => (
+                    <tr 
+                      key={input.id} 
+                      className={`border-t border-border/50 transition-all duration-200 ${
+                        hoveredCell?.row === rowIndex ? 'bg-primary/10' : ''
+                      }`}
+                    >
+                      <td className={`p-3 transition-all duration-200 ${
+                        hoveredCell?.row === rowIndex ? 'bg-primary/10' : ''
+                      }`}>
+                        <Badge 
+                          variant="outline" 
+                          className={`${input.borderColor} ${input.bgColor} ${input.textColor} transition-transform duration-200 ${
+                            hoveredCell?.row === rowIndex ? 'scale-105' : ''
+                          }`}
+                        >
+                          {input.name}
+                        </Badge>
+                      </td>
+                      {independentFormats.map((output, colIndex) => (
+                        <td 
+                          key={output.id} 
+                          className={`p-3 text-center transition-all duration-200 ${
+                            hoveredCell?.row === rowIndex && hoveredCell?.col === colIndex
+                              ? 'bg-primary/20'
+                              : hoveredCell?.row === rowIndex || hoveredCell?.col === colIndex
+                              ? 'bg-primary/10'
+                              : ''
+                          }`}
+                          onMouseEnter={() => setHoveredCell({ row: rowIndex, col: colIndex })}
+                          onMouseLeave={() => setHoveredCell(null)}
+                        >
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className={`inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 transition-all duration-200 cursor-pointer ${
+                                hoveredCell?.row === rowIndex && hoveredCell?.col === colIndex
+                                  ? 'bg-primary/30 scale-110 shadow-lg shadow-primary/20'
+                                  : 'hover:bg-primary/20'
+                              }`}>
+                                <Check className={`h-4 w-4 text-primary transition-transform duration-200 ${
+                                  hoveredCell?.row === rowIndex && hoveredCell?.col === colIndex ? 'scale-110' : ''
+                                }`} />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="font-medium">
+                              {input.name} → {output.name}
+                            </TooltipContent>
+                          </Tooltip>
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TooltipProvider>
           </div>
           
           {/* OpenAI Compatible Formats */}

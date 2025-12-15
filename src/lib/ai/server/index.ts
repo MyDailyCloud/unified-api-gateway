@@ -1,8 +1,47 @@
 /**
- * AI SDK HTTP Server
- * Node.js HTTP 服务器实现 - 提供 OpenAI 兼容的 API 端点
- * 支持高并发、速率限制、对话管理
+ * AI SDK Server Module
+ * 
+ * 重构说明：
+ * - 保留配置加载和验证工具
+ * - 保留认证模块导出
+ * - 废弃直接的 createServer()，改用 app/node.ts 的 startNodeServer()
+ * 
+ * 推荐使用方式：
+ * ```typescript
+ * import { startNodeServer } from './app/node';
+ * const app = await startNodeServer({ ... });
+ * ```
  */
+
+// ==================== 配置工具 ====================
+export { 
+  loadConfig, 
+  validateConfig, 
+  generateExampleConfig,
+  type ServerConfig, 
+  type ProviderConfigEntry,
+} from './config';
+
+// ==================== 认证模块 ====================
+export * from './auth';
+export { initServer, cleanupServer } from './init';
+export type { ServerInitConfig, ServerInitResult } from './init';
+
+// ==================== 请求日志 ====================
+export { 
+  RequestLogger,
+  type RequestLogEntry,
+  type LogFilter,
+} from './request-logger';
+
+// ==================== 速率限制 ====================
+export {
+  RateLimiter,
+  type RateLimitConfig,
+  type RateLimitResult,
+} from './rate-limiter';
+
+// ==================== 兼容性导出（已废弃） ====================
 
 import { AIClient } from '../client';
 import { loadConfig, validateConfig, type ServerConfig, type ProviderConfigEntry } from './config';
@@ -11,27 +50,21 @@ import { ProviderRateLimiter, RATE_LIMIT_PRESETS } from '../queue';
 import { createStorage, type UnifiedStorage } from '../storage';
 import { ConversationManager, MessageManager, createConversationManager, createMessageManager } from '../models';
 
-export { loadConfig, validateConfig, generateExampleConfig } from './config';
-export type { ServerConfig, ProviderConfigEntry } from './config';
-
-// 导出认证模块
-export * from './auth';
-export { initServer, cleanupServer } from './init';
-export type { ServerInitConfig, ServerInitResult } from './init';
-
-// ==================== 扩展服务器配置 ====================
-
+/**
+ * @deprecated 请使用 app/node.ts 中的 startNodeServer()
+ * @see startNodeServer
+ */
 export interface ExtendedServerConfig extends ServerConfig {
-  /** 启用并发控制 */
   enableRateLimiting?: boolean;
-  /** 启用对话持久化 */
   enablePersistence?: boolean;
-  /** 数据库路径 */
   dbPath?: string;
-  /** API 认证密钥（可选） */
   apiKey?: string;
 }
 
+/**
+ * @deprecated 请使用 app/node.ts 中的 NodeAppInstance
+ * @see NodeAppInstance
+ */
 export interface ServerInstance {
   start(): Promise<void>;
   stop(): Promise<void>;
@@ -43,24 +76,18 @@ export interface ServerInstance {
   getMessageManager(): MessageManager | null;
 }
 
-// ==================== 服务器统计 ====================
-
-interface ServerStats {
-  uptime: number;
-  startedAt: number;
-  requests: {
-    total: number;
-    chat: number;
-    stream: number;
-    conversations: number;
-  };
-}
-
 /**
- * 创建 HTTP 服务器
- * Create HTTP server with OpenAI-compatible endpoints
+ * @deprecated 请使用 app/node.ts 中的 startNodeServer()
+ * 
+ * 此函数保留仅为向后兼容，新代码应使用：
+ * ```typescript
+ * import { startNodeServer } from './app/node';
+ * const app = await startNodeServer({ ... });
+ * ```
  */
 export async function createServer(configOrPath?: ExtendedServerConfig | string): Promise<ServerInstance> {
+  console.warn('[DEPRECATED] createServer() is deprecated. Use startNodeServer() from app/node.ts instead.');
+  
   // 加载配置
   const baseConfig = typeof configOrPath === 'string' || configOrPath === undefined
     ? await loadConfig(typeof configOrPath === 'string' ? configOrPath : undefined)
@@ -106,7 +133,6 @@ export async function createServer(configOrPath?: ExtendedServerConfig | string)
   let rateLimiter: ProviderRateLimiter | null = null;
   if (config.enableRateLimiting) {
     rateLimiter = new ProviderRateLimiter();
-    // 应用预设配置
     for (const provider of client.getProviders()) {
       const preset = RATE_LIMIT_PRESETS[provider];
       if (preset) {
@@ -132,7 +158,7 @@ export async function createServer(configOrPath?: ExtendedServerConfig | string)
   }
 
   let server: ReturnType<typeof import('http').createServer> | null = null;
-  const stats: ServerStats = {
+  const stats = {
     uptime: 0,
     startedAt: 0,
     requests: { total: 0, chat: 0, stream: 0, conversations: 0 },
@@ -181,22 +207,8 @@ export async function createServer(configOrPath?: ExtendedServerConfig | string)
               status: 'ok',
               providers: client.getProviders(),
               timestamp: new Date().toISOString(),
-              features: {
-                rateLimiting: config.enableRateLimiting,
-                persistence: config.enablePersistence,
-              },
-            }));
-            return;
-          }
-
-          // 服务器统计
-          if (url.pathname === '/v1/stats') {
-            const queueStats = rateLimiter?.getAllStats() || {};
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({
-              uptime: Date.now() - stats.startedAt,
-              requests: stats.requests,
-              queues: queueStats,
+              deprecated: true,
+              message: 'This server implementation is deprecated. Use startNodeServer() instead.',
             }));
             return;
           }
@@ -251,7 +263,6 @@ export async function createServer(configOrPath?: ExtendedServerConfig | string)
             } else {
               stats.requests.chat++;
               
-              // 使用速率限制器
               let response;
               if (rateLimiter && provider) {
                 response = await rateLimiter.request(
@@ -269,111 +280,6 @@ export async function createServer(configOrPath?: ExtendedServerConfig | string)
             return;
           }
 
-          // ==================== 对话管理 API ====================
-
-          // 列出对话
-          if (url.pathname === '/v1/conversations' && req.method === 'GET') {
-            stats.requests.conversations++;
-            if (!conversationManager) {
-              res.writeHead(501, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ error: 'Persistence not enabled' }));
-              return;
-            }
-            
-            const conversations = await conversationManager.list();
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ data: conversations }));
-            return;
-          }
-
-          // 创建对话
-          if (url.pathname === '/v1/conversations' && req.method === 'POST') {
-            stats.requests.conversations++;
-            if (!conversationManager) {
-              res.writeHead(501, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ error: 'Persistence not enabled' }));
-              return;
-            }
-            
-            const body = await readBody(req);
-            const data = JSON.parse(body);
-            const conversation = await conversationManager.create(data);
-            res.writeHead(201, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify(conversation));
-            return;
-          }
-
-          // 获取/更新/删除单个对话
-          const convMatch = url.pathname.match(/^\/v1\/conversations\/([^/]+)$/);
-          if (convMatch) {
-            stats.requests.conversations++;
-            const convId = convMatch[1];
-            
-            if (!conversationManager) {
-              res.writeHead(501, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ error: 'Persistence not enabled' }));
-              return;
-            }
-
-            if (req.method === 'GET') {
-              const conversation = await conversationManager.get(convId);
-              if (!conversation) {
-                res.writeHead(404, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: 'Conversation not found' }));
-                return;
-              }
-              res.writeHead(200, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify(conversation));
-              return;
-            }
-
-            if (req.method === 'PUT') {
-              const body = await readBody(req);
-              const data = JSON.parse(body);
-              const updated = await conversationManager.update(convId, data);
-              if (!updated) {
-                res.writeHead(404, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: 'Conversation not found' }));
-                return;
-              }
-              res.writeHead(200, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify(updated));
-              return;
-            }
-
-            if (req.method === 'DELETE') {
-              const deleted = await conversationManager.delete(convId);
-              if (messageManager) {
-                await messageManager.deleteByConversation(convId);
-              }
-              res.writeHead(deleted ? 204 : 404);
-              res.end();
-              return;
-            }
-          }
-
-          // 对话消息管理
-          const msgMatch = url.pathname.match(/^\/v1\/conversations\/([^/]+)\/messages$/);
-          if (msgMatch && messageManager) {
-            const convId = msgMatch[1];
-            
-            if (req.method === 'GET') {
-              const messages = await messageManager.getByConversation(convId);
-              res.writeHead(200, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ data: messages }));
-              return;
-            }
-
-            if (req.method === 'POST') {
-              const body = await readBody(req);
-              const data = JSON.parse(body);
-              const message = await messageManager.add({ ...data, conversationId: convId });
-              res.writeHead(201, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify(message));
-              return;
-            }
-          }
-
           // 404
           res.writeHead(404, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Not Found', path: url.pathname }));
@@ -387,25 +293,10 @@ export async function createServer(configOrPath?: ExtendedServerConfig | string)
 
       return new Promise((resolve) => {
         server!.listen(config.port, config.host, () => {
-          console.log(`\n🚀 AI SDK Server running at http://${config.host}:${config.port}`);
+          console.log(`\n⚠️  [DEPRECATED] Using legacy createServer()`);
+          console.log(`   Please migrate to startNodeServer() from app/node.ts\n`);
+          console.log(`🚀 AI SDK Server running at http://${config.host}:${config.port}`);
           console.log(`   Providers: ${client.getProviders().join(', ') || 'none'}`);
-          console.log(`   Rate Limiting: ${config.enableRateLimiting ? 'enabled' : 'disabled'}`);
-          console.log(`   Persistence: ${config.enablePersistence ? 'enabled' : 'disabled'}`);
-          console.log(`\n   Endpoints:`);
-          console.log(`   - GET  /health                    Health check`);
-          console.log(`   - GET  /v1/stats                  Server statistics`);
-          console.log(`   - GET  /v1/models                 List models`);
-          console.log(`   - POST /v1/chat/completions       Chat completions`);
-          if (config.enablePersistence) {
-            console.log(`   - GET  /v1/conversations          List conversations`);
-            console.log(`   - POST /v1/conversations          Create conversation`);
-            console.log(`   - GET  /v1/conversations/:id      Get conversation`);
-            console.log(`   - PUT  /v1/conversations/:id      Update conversation`);
-            console.log(`   - DELETE /v1/conversations/:id    Delete conversation`);
-            console.log(`   - GET  /v1/conversations/:id/messages  Get messages`);
-            console.log(`   - POST /v1/conversations/:id/messages  Add message`);
-          }
-          console.log('');
           resolve();
         });
       });
@@ -451,7 +342,8 @@ export async function createServer(configOrPath?: ExtendedServerConfig | string)
   };
 }
 
-// 辅助函数
+// ==================== 辅助函数 ====================
+
 function readBody(req: import('http').IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     let body = '';
@@ -491,11 +383,11 @@ function log(config: ServerConfig, level: string, message: string) {
 }
 
 /**
- * 快速启动服务器
- * Quick start server with auto-loaded config
+ * @deprecated 请使用 startNodeServer()
  */
-export async function startServer(configOrPath?: ExtendedServerConfig | string): Promise<ServerInstance> {
-  const server = await createServer(configOrPath);
+export async function startServer(configPath?: string): Promise<ServerInstance> {
+  console.warn('[DEPRECATED] startServer() is deprecated. Use startNodeServer() from app/node.ts instead.');
+  const server = await createServer(configPath);
   await server.start();
   return server;
 }

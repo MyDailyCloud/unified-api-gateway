@@ -35,8 +35,11 @@ export function AppShell({ sidebar, children }: AppShellProps) {
               collapsible={true}
               onCollapse={() => setSidebarCollapsed(true)}
               onExpand={() => setSidebarCollapsed(false)}
+              className="transition-all duration-300 ease-in-out"
             >
-              {!sidebarCollapsed && sidebar}
+              <div className={`h-full transition-opacity duration-200 ${sidebarCollapsed ? 'opacity-0' : 'opacity-100'}`}>
+                {sidebar}
+              </div>
             </ResizablePanel>
             <ResizableHandle withHandle className="w-1 bg-border hover:bg-primary/20 transition-colors" />
           </>

@@ -84,6 +84,14 @@ jobs:
           fi
         timeout-minutes: 2
 
+      - name: AI SDK E2E Test
+        env:
+          CEREBRAS_API_KEY_1: ${{ secrets.CEREBRAS_API_KEY_1 }}
+          CEREBRAS_API_KEY_2: ${{ secrets.CEREBRAS_API_KEY_2 }}
+          CEREBRAS_API_KEY_3: ${{ secrets.CEREBRAS_API_KEY_3 }}
+        run: npx tsx scripts/test-ai-sdk.ts
+        timeout-minutes: 2
+
   build-mac:
     needs: test
     if: github.event.inputs.platform == 'all' || github.event.inputs.platform == 'mac' || github.event_name == 'push'

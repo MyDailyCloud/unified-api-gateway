@@ -1,6 +1,5 @@
 import { ReactNode } from 'react';
 import { ActivityBar } from './ActivityBar';
-import { CollapsedSidebarToggle } from './AppSidebar';
 import { useApp } from '@/context/AppContext';
 import {
   ResizablePanelGroup,
@@ -14,7 +13,7 @@ interface AppShellProps {
 }
 
 export function AppShell({ sidebar, children }: AppShellProps) {
-  const { sidebarCollapsed, setSidebarCollapsed } = useApp();
+  const { isMini, setSidebarState } = useApp();
 
   return (
     <div className="h-screen flex overflow-hidden bg-background">
@@ -23,21 +22,21 @@ export function AppShell({ sidebar, children }: AppShellProps) {
 
       {/* Resizable Content Area */}
       <ResizablePanelGroup direction="horizontal" className="flex-1" autoSaveId="app-sidebar-layout">
-        {/* Sidebar Panel - uses collapsible instead of conditional rendering */}
+        {/* Sidebar Panel */}
         {sidebar && (
           <>
             <ResizablePanel 
               id="sidebar"
-              defaultSize={20} 
-              minSize={12} 
+              defaultSize={isMini ? 4 : 20} 
+              minSize={4} 
               maxSize={35}
-              collapsedSize={0}
+              collapsedSize={4}
               collapsible={true}
-              onCollapse={() => setSidebarCollapsed(true)}
-              onExpand={() => setSidebarCollapsed(false)}
+              onCollapse={() => setSidebarState('mini')}
+              onExpand={() => setSidebarState('expanded')}
               className="transition-all duration-300 ease-in-out"
             >
-              <div className={`h-full transition-opacity duration-200 ${sidebarCollapsed ? 'opacity-0' : 'opacity-100'}`}>
+              <div className="h-full">
                 {sidebar}
               </div>
             </ResizablePanel>
@@ -47,9 +46,7 @@ export function AppShell({ sidebar, children }: AppShellProps) {
 
         {/* Main Content Panel */}
         <ResizablePanel id="main" defaultSize={80}>
-          <main className="h-full flex flex-col overflow-hidden relative">
-            {/* Toggle button when sidebar is collapsed */}
-            {sidebarCollapsed && <CollapsedSidebarToggle />}
+          <main className="h-full flex flex-col overflow-hidden">
             {children}
           </main>
         </ResizablePanel>

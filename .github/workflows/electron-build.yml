@@ -112,6 +112,17 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Update version from tag
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+            echo "Updating version to $VERSION"
+            npm version $VERSION --no-git-tag-version --allow-same-version
+          else
+            echo "Not a tag push, skipping version update"
+          fi
+        shell: bash
+
       - name: Build Vite app
         run: npm run build
 
@@ -158,6 +169,17 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Update version from tag
+        run: |
+          if ("${{ github.ref }}" -like "refs/tags/v*") {
+            $VERSION = "${{ github.ref }}" -replace '^refs/tags/v', ''
+            Write-Host "Updating version to $VERSION"
+            npm version $VERSION --no-git-tag-version --allow-same-version
+          } else {
+            Write-Host "Not a tag push, skipping version update"
+          }
+        shell: pwsh
+
       - name: Build Vite app
         run: npm run build
 
@@ -197,6 +219,17 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+
+      - name: Update version from tag
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+            echo "Updating version to $VERSION"
+            npm version $VERSION --no-git-tag-version --allow-same-version
+          else
+            echo "Not a tag push, skipping version update"
+          fi
+        shell: bash
 
       - name: Build Vite app
         run: npm run build

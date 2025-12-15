@@ -32,10 +32,8 @@ mac:
         - arm64
   category: public.app-category.developer-tools
   icon: build/icon.icns
-  hardenedRuntime: true
+  hardenedRuntime: false
   gatekeeperAssess: false
-  entitlements: build/entitlements.mac.plist
-  entitlementsInherit: build/entitlements.mac.plist
   notarize: false
 
 dmg:
@@ -87,7 +85,7 @@ linux:
     - target: rpm
       arch:
         - x64
-  icon: build/icons
+  icon: build/icon.png
   category: Development
   maintainer: AI SDK Team
   vendor: AI SDK

@@ -5,6 +5,7 @@
 
 import { AICore, createAICore, type AICoreConfig } from '../core';
 import { createIpcMainBridge, type IpcMainBridge, type IpcBridgeConfig } from '../transport';
+import { PROVIDER_METADATA } from '../providers-metadata';
 import type { StorageConfig } from '../storage/types';
 import type { AIProvider } from '../types';
 
@@ -50,6 +51,10 @@ export interface ElectronAppInstance {
   destroy(ipcMain: ElectronIpcMain): Promise<void>;
   /** 从安全存储加载 API Keys */
   loadApiKeysFromSecureStorage(): Promise<void>;
+  /** 获取已注册的提供商 */
+  getProviders(): Array<{ id: string; name: string }>;
+  /** 列出已存储 Key 的提供商 */
+  listStoredKeyProviders(): Promise<string[]>;
 }
 
 /**
@@ -206,6 +211,22 @@ export async function createElectronApp(config: ElectronAppConfig = {}): Promise
     },
     
     loadApiKeysFromSecureStorage,
+
+    getProviders() {
+      const providerIds = core.getRegisteredProviders();
+      return providerIds.map(id => ({
+        id,
+        name: PROVIDER_METADATA[id]?.name || id,
+      }));
+    },
+
+    async listStoredKeyProviders() {
+      if (!secureStorage) return [];
+      const keys = await secureStorage.list();
+      return keys
+        .filter(k => k.startsWith('apikey:'))
+        .map(k => k.replace('apikey:', ''));
+    },
   };
 }
 

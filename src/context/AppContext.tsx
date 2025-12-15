@@ -1,33 +1,37 @@
 import { createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react';
 
 export type AppModule = 'chat' | 'settings' | 'admin';
+export type SidebarState = 'expanded' | 'mini';
 
 interface AppState {
-  sidebarCollapsed: boolean;
+  sidebarState: SidebarState;
   currentModule: AppModule;
   commandPaletteOpen: boolean;
 }
 
 interface AppContextType extends AppState {
   toggleSidebar: () => void;
-  setSidebarCollapsed: (collapsed: boolean) => void;
+  setSidebarState: (state: SidebarState) => void;
   setCurrentModule: (module: AppModule) => void;
   setCommandPaletteOpen: (open: boolean) => void;
   triggerNewChat: () => void;
   registerNewChatHandler: (handler: () => void) => void;
+  isMini: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarState, setSidebarState] = useState<SidebarState>('expanded');
   const [currentModule, setCurrentModule] = useState<AppModule>('chat');
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const newChatHandlerRef = useRef<(() => void) | null>(null);
 
   const toggleSidebar = useCallback(() => {
-    setSidebarCollapsed(prev => !prev);
+    setSidebarState(prev => prev === 'expanded' ? 'mini' : 'expanded');
   }, []);
+
+  const isMini = sidebarState === 'mini';
 
   const registerNewChatHandler = useCallback((handler: () => void) => {
     newChatHandlerRef.current = handler;
@@ -39,15 +43,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return (
     <AppContext.Provider value={{
-      sidebarCollapsed,
+      sidebarState,
       currentModule,
       commandPaletteOpen,
       toggleSidebar,
-      setSidebarCollapsed,
+      setSidebarState,
       setCurrentModule,
       setCommandPaletteOpen,
       triggerNewChat,
       registerNewChatHandler,
+      isMini,
     }}>
       {children}
     </AppContext.Provider>

@@ -50,6 +50,30 @@ function fail(name: string, error: string) {
   console.log(`   ❌ ${name} - ${error}`);
 }
 
+import fs from 'fs';
+import path from 'path';
+
+// ==================== 加载 .env 文件 ====================
+function loadEnv() {
+  const envPath = path.resolve(process.cwd(), '.env');
+  if (fs.existsSync(envPath)) {
+    const content = fs.readFileSync(envPath, 'utf-8');
+    content.split('\n').forEach(line => {
+      const match = line.match(/^([^=]+)=(.*)$/);
+      if (match) {
+        const key = match[1].trim();
+        const value = match[2].trim().replace(/^["']|["']$/g, ''); // Remove quotes if present
+        if (!process.env[key]) {
+          process.env[key] = value;
+        }
+      }
+    });
+    console.log('Loaded environment variables from .env');
+  }
+}
+
+loadEnv();
+
 // ==================== 获取 API Keys ====================
 
 const API_KEYS = [
@@ -131,10 +155,11 @@ async function testFactory() {
   log('\n2. Factory Functions');
   
   try {
-    const modelRef = createCerebras({
+    const cerebras = createCerebras({
       apiKey: API_KEYS[0],
       defaultModel: 'llama-3.1-8b',
     });
+    const modelRef = cerebras();
     
     if (modelRef && modelRef.provider === 'cerebras') {
       pass(`createCerebras()`, `ModelReference created`);
@@ -374,8 +399,8 @@ async function testDiagnostics() {
   // 生成诊断报告
   try {
     const report = await diagnostics.generateReport();
-    if (report.results.length > 0) {
-      pass(`Report generated`, `${report.results.length} provider(s) tested`);
+    if (report.providers.length > 0) {
+      pass(`Report generated`, `${report.providers.length} provider(s) tested`);
     } else {
       fail(`Report generated`, 'Empty report');
     }

@@ -341,7 +341,10 @@ declare global {
 */
 
 // ==================== 类型扩展 ====================
+// Window.electron types are defined in src/vite-env.d.ts
+// This file uses the global ElectronAPI type from there
 
+/*
 declare global {
   interface Window {
     electron?: {
@@ -364,6 +367,7 @@ declare global {
     };
   }
 }
+*/
 
 // ==================== 工具函数 ====================
 

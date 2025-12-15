@@ -31,10 +31,6 @@ mac:
         - x64
         - arm64
   category: public.app-category.developer-tools
-  icon: build/icon.icns
-  hardenedRuntime: false
-  gatekeeperAssess: false
-  notarize: false
 
 dmg:
   contents:
@@ -57,7 +53,6 @@ win:
     - target: portable
       arch:
         - x64
-  icon: build/icon.ico
   artifactName: "${productName}-${version}-${os}-${arch}.${ext}"
 
 nsis:
@@ -65,9 +60,6 @@ nsis:
   perMachine: false
   allowToChangeInstallationDirectory: true
   deleteAppDataOnUninstall: false
-  installerIcon: build/icon.ico
-  uninstallerIcon: build/icon.ico
-  installerHeaderIcon: build/icon.ico
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: AI SDK Gateway
@@ -85,7 +77,6 @@ linux:
     - target: rpm
       arch:
         - x64
-  icon: build/icon.png
   category: Development
   maintainer: AI SDK Team
   vendor: AI SDK

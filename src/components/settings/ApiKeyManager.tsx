@@ -20,6 +20,9 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+// Type helper for electron API
+const electron = window.electron as any;
+
 interface ProviderStatus {
   hasKey: boolean;
   isValid?: boolean;
@@ -41,15 +44,15 @@ export function ApiKeyManager() {
   }, []);
 
   const loadProviderStatus = async () => {
-    if (!window.electron?.apiKeys) {
+    if (!electron?.apiKeys) {
       // Running in browser - use mock data
       return;
     }
 
     try {
-      const result = await window.electron.apiKeys.list();
+      const result = await electron.apiKeys.list();
       const status: Record<string, ProviderStatus> = {};
-      result.providers.forEach((p) => {
+      result.providers.forEach((p: any) => {
         status[p.provider] = {
           hasKey: p.hasKey,
           lastUpdated: p.lastUpdated,
@@ -69,7 +72,7 @@ export function ApiKeyManager() {
   const handleSaveApiKey = async (apiKey: string, baseUrl?: string) => {
     if (!selectedProvider) return;
 
-    if (!window.electron?.apiKeys) {
+    if (!electron?.apiKeys) {
       toast({
         title: 'Not available',
         description: 'API key storage requires Electron environment',
@@ -78,7 +81,7 @@ export function ApiKeyManager() {
       return;
     }
 
-    const result = await window.electron.apiKeys.set(selectedProvider.id, apiKey);
+    const result = await electron.apiKeys.set(selectedProvider.id, apiKey);
     
     if (result.success) {
       toast({
@@ -86,13 +89,11 @@ export function ApiKeyManager() {
         description: `${selectedProvider.name} API key has been securely stored.`,
       });
       
-      // Update local state
       setProviderStatus((prev) => ({
         ...prev,
         [selectedProvider.id]: { hasKey: true, lastUpdated: Date.now() },
       }));
       
-      // Validate the key
       handleValidate(selectedProvider.id);
     } else {
       throw new Error(result.error || 'Failed to save API key');
@@ -105,9 +106,9 @@ export function ApiKeyManager() {
   };
 
   const confirmDelete = async () => {
-    if (!providerToDelete || !window.electron?.apiKeys) return;
+    if (!providerToDelete || !electron?.apiKeys) return;
 
-    const result = await window.electron.apiKeys.delete(providerToDelete);
+    const result = await electron.apiKeys.delete(providerToDelete);
     
     if (result.success) {
       toast({
@@ -133,12 +134,12 @@ export function ApiKeyManager() {
   };
 
   const handleValidate = async (providerId: string) => {
-    if (!window.electron?.apiKeys) return;
+    if (!electron?.apiKeys) return;
 
     setValidatingProvider(providerId);
     
     try {
-      const result = await window.electron.apiKeys.validate(providerId);
+      const result = await electron.apiKeys.validate(providerId);
       
       setProviderStatus((prev) => ({
         ...prev,

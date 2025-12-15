@@ -3,6 +3,7 @@ import { ArrowLeft, Key, HardDrive, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ApiKeyManager } from '@/components/settings/ApiKeyManager';
+import { StorageManager } from '@/components/settings/StorageManager';
 import { VersionInfo } from '@/components/VersionInfo';
 import { Separator } from '@/components/ui/separator';
 
@@ -61,12 +62,7 @@ export default function Settings() {
               </p>
             </div>
             <Separator />
-            <div className="rounded-lg border bg-card p-6">
-              <div className="text-center text-muted-foreground">
-                <HardDrive className="mx-auto h-12 w-12 mb-4 opacity-50" />
-                <p>Storage management coming soon</p>
-              </div>
-            </div>
+            <StorageManager />
           </TabsContent>
 
           <TabsContent value="about" className="space-y-6">

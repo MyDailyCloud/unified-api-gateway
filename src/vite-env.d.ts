@@ -1,5 +1,7 @@
 /// <reference types="vite/client" />
 
+/* ElectronAPI types for Electron renderer process */
+
 // Version info types
 interface VersionInfo {
   app: string;
@@ -59,6 +61,22 @@ interface ElectronAPI {
     delete: (provider: string) => Promise<{ success: boolean; error?: string }>;
     validate: (provider: string) => Promise<{ valid: boolean; error?: string }>;
     hasKey: (provider: string) => Promise<{ hasKey: boolean }>;
+  };
+  chat: {
+    send: (params: { provider: string; model: string; messages: any[]; conversationId?: string }) => Promise<any>;
+    stream: (params: { provider: string; model: string; messages: any[]; conversationId?: string }) => Promise<string>;
+    cancelStream: (streamId: string) => Promise<void>;
+  };
+  conversations: {
+    list: () => Promise<{ conversations: any[] }>;
+    create: (title?: string) => Promise<{ id: string }>;
+    delete: (id: string) => Promise<{ success: boolean }>;
+    getMessages: (conversationId: string) => Promise<{ messages: any[] }>;
+  };
+  storage: {
+    getStats: () => Promise<{ conversations: number; messages: number; cacheSize: number }>;
+    clearCache: () => Promise<{ success: boolean }>;
+    exportData: () => Promise<{ data: any }>;
   };
   ipc: {
     send: (channel: string, ...args: any[]) => void;

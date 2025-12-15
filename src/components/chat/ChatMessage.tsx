@@ -1,4 +1,4 @@
-import { Bot, User } from 'lucide-react';
+import { Bot, User, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Message {
@@ -6,6 +6,7 @@ interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
   createdAt: Date;
+  isStreaming?: boolean;
 }
 
 interface ChatMessageProps {
@@ -29,7 +30,14 @@ export function ChatMessage({ message }: ChatMessageProps) {
           ? 'bg-primary text-primary-foreground' 
           : 'bg-muted'
       )}>
-        <p className="whitespace-pre-wrap">{message.content}</p>
+        <p className="whitespace-pre-wrap">
+          {message.content}
+          {message.isStreaming && (
+            <span className="inline-flex items-center ml-1">
+              <Loader2 className="h-3 w-3 animate-spin" />
+            </span>
+          )}
+        </p>
       </div>
     </div>
   );

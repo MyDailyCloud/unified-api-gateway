@@ -40,12 +40,29 @@ export default function ChatView() {
   const [selectedModel, setSelectedModel] = useState('gpt-4');
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const { setCurrentModule } = useApp();
+  const { setCurrentModule, registerNewChatHandler } = useApp();
+
+  const createNewConversation = useCallback(async () => {
+    if (!electron?.conversations) {
+      const id = crypto.randomUUID();
+      setConversations(prev => [{ id, title: 'New Chat', createdAt: new Date(), updatedAt: new Date() }, ...prev]);
+      setCurrentConversation(id);
+      setMessages([]);
+      return;
+    }
+    try {
+      const result = await electron.conversations.create();
+      await loadConversations();
+      setCurrentConversation(result.id);
+      setMessages([]);
+    } catch (e) { toast({ title: 'Error', description: 'Failed to create conversation', variant: 'destructive' }); }
+  }, [toast]);
 
   useEffect(() => { 
     setCurrentModule('chat');
-    loadConversations(); 
-  }, [setCurrentModule]);
+    loadConversations();
+    registerNewChatHandler(createNewConversation);
+  }, [setCurrentModule, registerNewChatHandler, createNewConversation]);
   
   useEffect(() => { 
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight); 
@@ -67,21 +84,6 @@ export default function ChatView() {
     } catch (e) { console.error('Failed to load messages:', e); }
   };
 
-  const createNewConversation = async () => {
-    if (!electron?.conversations) {
-      const id = crypto.randomUUID();
-      setConversations(prev => [{ id, title: 'New Chat', createdAt: new Date(), updatedAt: new Date() }, ...prev]);
-      setCurrentConversation(id);
-      setMessages([]);
-      return;
-    }
-    try {
-      const result = await electron.conversations.create();
-      await loadConversations();
-      setCurrentConversation(result.id);
-      setMessages([]);
-    } catch (e) { toast({ title: 'Error', description: 'Failed to create conversation', variant: 'destructive' }); }
-  };
 
   const selectConversation = (id: string) => { 
     setCurrentConversation(id); 

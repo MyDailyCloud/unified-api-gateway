@@ -2,9 +2,13 @@
 /**
  * AI SDK CLI
  * 命令行工具 - 快速启动 AI 服务器
+ * 
+ * 重构后统一使用 startNodeServer() 作为唯一入口
  */
 
-import { startServer, generateExampleConfig } from './server';
+import { startNodeServer, type NodeAppInstance } from './app/node';
+import { generateExampleConfig, loadConfig } from './server/config';
+import type { AIProvider } from './types';
 
 async function main() {
   const args = process.argv.slice(2);
@@ -14,7 +18,7 @@ async function main() {
     case 'serve':
     case 'start':
     case undefined:
-      await runServer(args.slice(1));
+      await runServer(args.slice(command ? 1 : 0));
       break;
       
     case 'init':
@@ -42,33 +46,76 @@ async function main() {
 
 async function runServer(args: string[]) {
   // 解析参数
-  let port: number | undefined;
+  let port = 3000;
+  let host = '0.0.0.0';
   let configPath: string | undefined;
+  let silent = false;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '-p' || arg === '--port') {
       port = parseInt(args[++i], 10);
+    } else if (arg === '-h' || arg === '--host') {
+      host = args[++i];
     } else if (arg === '-c' || arg === '--config') {
       configPath = args[++i];
+    } else if (arg === '-s' || arg === '--silent') {
+      silent = true;
     }
   }
 
-  console.log('🤖 AI SDK Server');
-  console.log('================\n');
+  // 环境变量覆盖
+  if (process.env.AI_SDK_PORT) {
+    port = parseInt(process.env.AI_SDK_PORT, 10);
+  }
+  if (process.env.AI_SDK_HOST) {
+    host = process.env.AI_SDK_HOST;
+  }
+
+  if (!silent) {
+    console.log('🤖 AI SDK Server');
+    console.log('================\n');
+  }
 
   try {
-    const server = await startServer(configPath);
+    // 加载配置文件（如果存在）
+    const fileConfig = await loadConfig(configPath);
     
-    // 如果指定了端口，更新配置
-    if (port) {
-      console.log(`Note: Port override not implemented in this version, using config port.`);
+    // 构建 providers 配置
+    const providers: Array<{ provider: AIProvider; apiKey: string; baseURL?: string }> = [];
+    
+    for (const p of fileConfig.providers) {
+      providers.push({
+        provider: p.provider,
+        apiKey: p.apiKey,
+        baseURL: p.baseUrl,
+      });
+    }
+
+    // 使用统一的 startNodeServer
+    const app: NodeAppInstance = await startNodeServer({
+      http: {
+        port: fileConfig.port || port,
+        host: fileConfig.host || host,
+      },
+      providers,
+      silent,
+      mode: 'full',
+    });
+
+    // 如果有生成的密码，显示它
+    const generatedPassword = app.getGeneratedPassword();
+    if (generatedPassword && !silent) {
+      console.log(`\n🔑 Generated Admin Password: ${generatedPassword}`);
+      console.log('   Please save this password securely. It will not be shown again.\n');
     }
 
     // 优雅关闭
     const shutdown = async () => {
-      console.log('\n\nShutting down...');
-      await server.stop();
+      if (!silent) {
+        console.log('\n\nShutting down...');
+      }
+      await app.stop();
       process.exit(0);
     };
 
@@ -119,7 +166,9 @@ Commands:
 
 Options:
   -p, --port      Server port (default: 3000)
+  -h, --host      Server host (default: 0.0.0.0)
   -c, --config    Config file path (default: .ai-sdk.json)
+  -s, --silent    Silent mode (minimal output)
 
 Environment Variables:
   OPENAI_API_KEY      OpenAI API key
@@ -127,6 +176,7 @@ Environment Variables:
   GOOGLE_API_KEY      Google AI API key
   DEEPSEEK_API_KEY    DeepSeek API key
   GROQ_API_KEY        Groq API key
+  CEREBRAS_API_KEY    Cerebras API key
   OLLAMA_HOST         Ollama server URL (default: http://localhost:11434)
   AI_SDK_PORT         Server port override
   AI_SDK_HOST         Server host override
@@ -136,16 +186,30 @@ Examples:
   export OPENAI_API_KEY=sk-...
   npx ai-sdk serve
 
+  # Specify port and host
+  npx ai-sdk serve -p 8080 -h 127.0.0.1
+
   # Use config file
   npx ai-sdk serve -c ./my-config.json
 
   # Create config file
   npx ai-sdk init
 
-API Endpoints:
+API Endpoints (when running):
   GET  /health               Health check
   GET  /v1/models            List available models
   POST /v1/chat/completions  Chat completions (OpenAI compatible)
+  
+Auth Endpoints (Node.js mode):
+  POST /internal/auth/login           Admin login
+  POST /internal/auth/logout          Logout
+  POST /internal/auth/change-password Change password
+  GET  /internal/auth/me              Get current user
+  
+Gateway Key Management:
+  GET    /internal/gateway-keys       List all keys
+  POST   /internal/gateway-keys       Create new key
+  DELETE /internal/gateway-keys/:id   Revoke key
 
 Documentation: https://github.com/your-org/ai-sdk
 `);

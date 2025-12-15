@@ -22,6 +22,10 @@ export interface AuthContext {
   userId: string;
   /** 是否已认证 */
   authenticated: boolean;
+  /** 认证失败原因（提供了无效凭据） */
+  authFailed?: boolean;
+  /** 失败原因 */
+  failureReason?: string;
   /** Provider API Key（passthrough 模式） */
   providerApiKey?: string;
   /** 目标 Provider（passthrough 模式） */

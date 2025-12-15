@@ -135,7 +135,7 @@ export class AuthMiddleware {
 
       // 检查是否为动态 Gateway API Key
       if (this.gatewayKeyManager) {
-        const { valid, keyInfo } = await this.gatewayKeyManager.verify(token);
+        const { valid, keyInfo, reason } = await this.gatewayKeyManager.verify(token);
         if (valid && keyInfo) {
           return {
             role: 'anonymous',
@@ -144,6 +144,17 @@ export class AuthMiddleware {
             authenticated: true,
             gatewayKey: keyInfo,
           } as ExtendedAuthContext;
+        }
+        // 如果 token 格式像 gateway key 但验证失败，标记为认证失败
+        if (token.startsWith('gw-')) {
+          return {
+            role: 'anonymous',
+            mode: 'none',
+            userId: 'anonymous',
+            authenticated: false,
+            authFailed: true,
+            failureReason: reason || 'Invalid gateway key',
+          };
         }
       }
 
@@ -298,6 +309,11 @@ export function checkRoutePermission(
   path: string,
   auth: AuthContext
 ): { allowed: boolean; reason?: string } {
+  // 如果提供了无效凭据，立即拒绝
+  if (auth.authFailed) {
+    return { allowed: false, reason: auth.failureReason || 'Authentication failed' };
+  }
+  
   // 构建路由键
   const routeKey = `${method} ${path}`;
   

@@ -24,10 +24,7 @@ export function ChatSidebar({
   const { isMini, toggleSidebar } = useApp();
 
   return (
-    <div className={cn(
-      "bg-sidebar-background border-r border-sidebar-border flex flex-col h-full transition-all duration-300",
-      isMini ? "w-14" : "w-64"
-    )}>
+    <div className="bg-sidebar-background border-r border-sidebar-border flex flex-col h-full w-full min-w-0 transition-all duration-300">
       <div className={cn(
         "h-12 px-3 flex items-center border-b border-sidebar-border",
         isMini ? "justify-center" : "justify-between"
@@ -123,10 +120,7 @@ export function SettingsSidebar({ activeTab, onTabChange }: SettingsSidebarProps
   const { isMini, toggleSidebar } = useApp();
 
   return (
-    <div className={cn(
-      "bg-sidebar-background border-r border-sidebar-border flex flex-col h-full transition-all duration-300",
-      isMini ? "w-14" : "w-56"
-    )}>
+    <div className="bg-sidebar-background border-r border-sidebar-border flex flex-col h-full w-full min-w-0 transition-all duration-300">
       <div className={cn(
         "h-12 px-3 flex items-center border-b border-sidebar-border",
         isMini ? "justify-center" : "justify-between"

@@ -27,8 +27,8 @@ export function AppShell({ sidebar, children }: AppShellProps) {
           <>
             <ResizablePanel 
               id="sidebar"
-              defaultSize={isMini ? 4 : 20} 
-              minSize={4} 
+              defaultSize={20} 
+              minSize={10} 
               maxSize={35}
               collapsedSize={4}
               collapsible={true}

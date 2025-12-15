@@ -64,7 +64,7 @@ jobs:
         run: |
           # Run Electron in health check mode
           xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" \
-            npx electron dist-electron/main.js --health-check --no-sandbox --disable-gpu 2>&1 | tee health-check.log
+            npx electron dist-electron/electron/main.js --health-check --no-sandbox --disable-gpu 2>&1 | tee health-check.log
           
           # Check output for success/failure
           if grep -q "HEALTH_CHECK_PASSED" health-check.log; then

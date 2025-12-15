@@ -53,6 +53,13 @@ interface ElectronAPI {
     getHealthStatus: () => Promise<HealthStatus>;
     healthCheck: () => Promise<FullHealthCheck>;
   };
+  apiKeys: {
+    list: () => Promise<{ providers: Array<{ provider: string; hasKey: boolean; lastUpdated?: number }> }>;
+    set: (provider: string, apiKey: string) => Promise<{ success: boolean; error?: string }>;
+    delete: (provider: string) => Promise<{ success: boolean; error?: string }>;
+    validate: (provider: string) => Promise<{ valid: boolean; error?: string }>;
+    hasKey: (provider: string) => Promise<{ hasKey: boolean }>;
+  };
   ipc: {
     send: (channel: string, ...args: any[]) => void;
     invoke: (channel: string, ...args: any[]) => Promise<any>;

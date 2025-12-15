@@ -18,6 +18,19 @@ contextBridge.exposeInMainWorld('electron', {
     getHealthStatus: () => ipcRenderer.invoke('system:getHealthStatus'),
     healthCheck: () => ipcRenderer.invoke('system:health-check'),
   },
+
+  // API Keys management
+  apiKeys: {
+    list: () => ipcRenderer.invoke('apiKeys:list'),
+    set: (provider: string, apiKey: string) => 
+      ipcRenderer.invoke('apiKeys:set', { provider, apiKey }),
+    delete: (provider: string) => 
+      ipcRenderer.invoke('apiKeys:delete', { provider }),
+    validate: (provider: string) => 
+      ipcRenderer.invoke('apiKeys:validate', { provider }),
+    hasKey: (provider: string) => 
+      ipcRenderer.invoke('apiKeys:get', { provider }),
+  },
   
   // IPC communication
   ipc: {
@@ -41,9 +54,6 @@ contextBridge.exposeInMainWorld('electron', {
     },
   },
 });
-
-// Type declarations for the exposed API
-// See electron/env.d.ts for the Window interface definition
 
 // Notify that preload script has loaded
 console.log('Preload script loaded');

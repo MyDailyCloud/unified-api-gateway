@@ -100,6 +100,11 @@
     @apply border-border;
   }
 
+  html, body, #root {
+    height: 100%;
+    overflow: hidden;
+  }
+
   html {
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
   }

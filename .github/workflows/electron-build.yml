@@ -55,6 +55,14 @@ jobs:
       - name: Create dist-electron package.json
         run: echo '{"type":"commonjs"}' > dist-electron/package.json
 
+      - name: AI SDK E2E Test (在 Node.js 环境中运行)
+        env:
+          CEREBRAS_API_KEY_1: ${{ secrets.CEREBRAS_API_KEY_1 }}
+          CEREBRAS_API_KEY_2: ${{ secrets.CEREBRAS_API_KEY_2 }}
+          CEREBRAS_API_KEY_3: ${{ secrets.CEREBRAS_API_KEY_3 }}
+        run: npx tsx scripts/tests/runner.ts --e2e
+        timeout-minutes: 3
+
       - name: Install Electron dependencies for headless test
         run: |
           sudo apt-get update
@@ -86,14 +94,6 @@ jobs:
             exit 1
           fi
         timeout-minutes: 2
-
-      - name: AI SDK E2E Test
-        env:
-          CEREBRAS_API_KEY_1: ${{ secrets.CEREBRAS_API_KEY_1 }}
-          CEREBRAS_API_KEY_2: ${{ secrets.CEREBRAS_API_KEY_2 }}
-          CEREBRAS_API_KEY_3: ${{ secrets.CEREBRAS_API_KEY_3 }}
-        run: npx tsx scripts/tests/runner.ts --e2e
-        timeout-minutes: 3
 
   build-mac:
     needs: test

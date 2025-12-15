@@ -92,8 +92,8 @@ jobs:
           CEREBRAS_API_KEY_1: ${{ secrets.CEREBRAS_API_KEY_1 }}
           CEREBRAS_API_KEY_2: ${{ secrets.CEREBRAS_API_KEY_2 }}
           CEREBRAS_API_KEY_3: ${{ secrets.CEREBRAS_API_KEY_3 }}
-        run: npx tsx scripts/test-ai-sdk.ts
-        timeout-minutes: 2
+        run: npx tsx scripts/tests/runner.ts --e2e
+        timeout-minutes: 3
 
   build-mac:
     needs: test

@@ -26,7 +26,7 @@ const PROVIDER_MODELS: Record<AIProvider, string[]> = {
   moonshot: ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
   qwen: ['qwen-turbo', 'qwen-plus', 'qwen-max'],
   groq: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'],
-  cerebras: ['llama3.1-8b', 'llama3.1-70b'],
+  cerebras: ['llama3.1-8b', 'llama3.1-70b', 'llama-3.3-70b', 'llama3.3-70b'],
   glm: ['glm-4', 'glm-4-flash'],
   cohere: ['command-r-plus', 'command-r', 'command'],
   mistral: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest'],

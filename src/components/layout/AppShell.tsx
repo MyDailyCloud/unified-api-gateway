@@ -22,11 +22,12 @@ export function AppShell({ sidebar, children }: AppShellProps) {
       <ActivityBar />
 
       {/* Resizable Content Area */}
-      <ResizablePanelGroup direction="horizontal" className="flex-1">
+      <ResizablePanelGroup direction="horizontal" className="flex-1" autoSaveId="app-sidebar-layout">
         {/* Sidebar Panel - collapsible with min/max sizes */}
         {!sidebarCollapsed && sidebar && (
           <>
             <ResizablePanel 
+              id="sidebar"
               defaultSize={20} 
               minSize={12} 
               maxSize={35}
@@ -42,7 +43,7 @@ export function AppShell({ sidebar, children }: AppShellProps) {
         {sidebarCollapsed && <CollapsedSidebarToggle />}
 
         {/* Main Content Panel */}
-        <ResizablePanel defaultSize={80}>
+        <ResizablePanel id="main" defaultSize={80}>
           <main className="h-full flex flex-col overflow-hidden relative">
             {children}
           </main>

@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Key, HardDrive, Info } from 'lucide-react';
+import { ArrowLeft, Key, HardDrive, Info, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ApiKeyManager } from '@/components/settings/ApiKeyManager';
 import { StorageManager } from '@/components/settings/StorageManager';
+import { ThemeSelector } from '@/components/settings/ThemeSelector';
 import { VersionInfo } from '@/components/VersionInfo';
 import { Separator } from '@/components/ui/separator';
 
@@ -28,7 +29,7 @@ export default function Settings() {
       {/* Main Content */}
       <main className="container py-6">
         <Tabs defaultValue="api-keys" className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-3">
+          <TabsList className="grid w-full max-w-lg grid-cols-4">
             <TabsTrigger value="api-keys" className="gap-2">
               <Key className="h-4 w-4" />
               API Keys
@@ -36,6 +37,10 @@ export default function Settings() {
             <TabsTrigger value="storage" className="gap-2">
               <HardDrive className="h-4 w-4" />
               Storage
+            </TabsTrigger>
+            <TabsTrigger value="appearance" className="gap-2">
+              <Palette className="h-4 w-4" />
+              Appearance
             </TabsTrigger>
             <TabsTrigger value="about" className="gap-2">
               <Info className="h-4 w-4" />
@@ -63,6 +68,17 @@ export default function Settings() {
             </div>
             <Separator />
             <StorageManager />
+          </TabsContent>
+
+          <TabsContent value="appearance" className="space-y-6">
+            <div>
+              <h2 className="text-xl font-semibold">Appearance</h2>
+              <p className="text-muted-foreground">
+                Customize the look and feel of the application.
+              </p>
+            </div>
+            <Separator />
+            <ThemeSelector />
           </TabsContent>
 
           <TabsContent value="about" className="space-y-6">

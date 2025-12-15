@@ -24,7 +24,8 @@ import {
   Radio,
   Route,
   Shuffle,
-  Settings
+  Settings,
+  MessageSquare
 } from "lucide-react";
 
 // Provider categories
@@ -239,6 +240,22 @@ export default function Index() {
               <Badge variant="outline" className="border-primary/50 bg-primary/10 text-primary">任意格式</Badge>
             </div>
             
+            {/* CTA Buttons */}
+            <div className="mb-8 flex flex-wrap justify-center gap-4">
+              <Button size="lg" asChild className="gap-2">
+                <Link to="/chat">
+                  <MessageSquare className="h-5 w-5" />
+                  Start Chatting
+                </Link>
+              </Button>
+              <Button size="lg" variant="outline" asChild className="gap-2">
+                <Link to="/settings">
+                  <Settings className="h-5 w-5" />
+                  Configure Providers
+                </Link>
+              </Button>
+            </div>
+
             <div className="flex flex-wrap justify-center gap-4">
               {[
                 { icon: Shuffle, label: "格式自由" },

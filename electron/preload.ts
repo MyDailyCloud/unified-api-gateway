@@ -31,6 +31,31 @@ contextBridge.exposeInMainWorld('electron', {
     hasKey: (provider: string) => 
       ipcRenderer.invoke('apiKeys:get', { provider }),
   },
+
+  // Chat with streaming support
+  chat: {
+    send: (params: { provider: string; model: string; messages: any[]; conversationId?: string }) => 
+      ipcRenderer.invoke('chat:send', params),
+    stream: (params: { provider: string; model: string; messages: any[]; conversationId?: string }) => 
+      ipcRenderer.invoke('chat:stream', params),
+    cancelStream: (streamId: string) => 
+      ipcRenderer.invoke('chat:cancelStream', streamId),
+  },
+
+  // Conversations management
+  conversations: {
+    list: () => ipcRenderer.invoke('conversations:list'),
+    create: (title?: string) => ipcRenderer.invoke('conversations:create', { title }),
+    delete: (id: string) => ipcRenderer.invoke('conversations:delete', { id }),
+    getMessages: (conversationId: string) => ipcRenderer.invoke('conversations:getMessages', { conversationId }),
+  },
+
+  // Storage management
+  storage: {
+    getStats: () => ipcRenderer.invoke('storage:getStats'),
+    clearCache: () => ipcRenderer.invoke('storage:clearCache'),
+    exportData: () => ipcRenderer.invoke('storage:exportData'),
+  },
   
   // IPC communication
   ipc: {

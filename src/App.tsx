@@ -6,12 +6,33 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppProvider } from "@/context/AppContext";
+import { CommandPalette } from "@/components/CommandPalette";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import ChatView from "./views/ChatView";
 import SettingsView from "./views/SettingsView";
 import AdminView from "./views/AdminView";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+
+function AppContent() {
+  useKeyboardShortcuts();
+  
+  return (
+    <>
+      <CommandPalette />
+      <Routes>
+        <Route path="/" element={<Navigate to="/chat" replace />} />
+        <Route path="/chat" element={<ChatView />} />
+        <Route path="/chat/:id" element={<ChatView />} />
+        <Route path="/settings" element={<SettingsView />} />
+        <Route path="/settings/:tab" element={<SettingsView />} />
+        <Route path="/admin" element={<AdminView />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
+  );
+}
 
 const App = () => (
   <ErrorBoundary>
@@ -22,15 +43,7 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
-              <Routes>
-                <Route path="/" element={<Navigate to="/chat" replace />} />
-                <Route path="/chat" element={<ChatView />} />
-                <Route path="/chat/:id" element={<ChatView />} />
-                <Route path="/settings" element={<SettingsView />} />
-                <Route path="/settings/:tab" element={<SettingsView />} />
-                <Route path="/admin" element={<AdminView />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+              <AppContent />
             </BrowserRouter>
           </TooltipProvider>
         </AppProvider>

@@ -212,15 +212,29 @@ export {
   type EndpointConfig,
 } from './gateway';
 
-// Node.js 服务器
+// Node.js 服务器配置（服务器启动请使用 app 模块的 startNodeServer）
 export {
-  createServer,
-  startServer,
+  // 配置工具
   loadConfig,
   validateConfig,
   generateExampleConfig,
   type ServerConfig,
   type ProviderConfigEntry,
+  // 认证
+  initServer,
+  cleanupServer,
+  type ServerInitConfig,
+  type ServerInitResult,
+  // 日志和限流
+  RequestLogger,
+  RateLimiter,
+  type RequestLogEntry,
+  type LogFilter,
+  type RateLimitConfig,
+  type RateLimitResult,
+  // @deprecated 使用 startNodeServer()
+  createServer,
+  startServer,
   type ServerInstance,
   type ExtendedServerConfig,
 } from './server';

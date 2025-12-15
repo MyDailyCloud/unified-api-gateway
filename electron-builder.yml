@@ -31,6 +31,11 @@ mac:
         - x64
         - arm64
   category: public.app-category.developer-tools
+  identity: null
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  entitlements: null
+  entitlementsInherit: null
 
 dmg:
   contents:

@@ -118,12 +118,18 @@ jobs:
       - name: Compile Electron TypeScript
         run: npx tsc -p electron/tsconfig.json
 
+      - name: Create dist-electron package.json
+        run: echo '{"type":"commonjs"}' > dist-electron/package.json
+
       - name: Build Electron app for macOS
         run: npx electron-builder --mac
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_LINK: ${{ secrets.MAC_CERTS }}
-          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTS_PASSWORD }}
+          # 只有在证书存在时才设置签名环境变量
+          CSC_LINK: ${{ secrets.MAC_CERTS || '' }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTS_PASSWORD || '' }}
+          # 如果没有证书，跳过签名
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.MAC_CERTS && 'true' || 'false' }}
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
@@ -157,6 +163,9 @@ jobs:
 
       - name: Compile Electron TypeScript
         run: npx tsc -p electron/tsconfig.json
+
+      - name: Create dist-electron package.json
+        run: echo '{"type":"commonjs"}' > dist-electron/package.json
 
       - name: Build Electron app for Windows
         run: npx electron-builder --win
@@ -194,6 +203,9 @@ jobs:
 
       - name: Compile Electron TypeScript
         run: npx tsc -p electron/tsconfig.json
+
+      - name: Create dist-electron package.json
+        run: echo '{"type":"commonjs"}' > dist-electron/package.json
 
       - name: Build Electron app for Linux
         run: npx electron-builder --linux

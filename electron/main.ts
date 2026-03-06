@@ -51,13 +51,13 @@ async function initBackend(): Promise<boolean> {
       userDataPath: app.getPath('userData'),
       secureStorage,
     });
-    
+
     // Initialize IPC handlers
     aiAppInstance.initialize(ipcMain);
-    
+
     // Load stored API keys and providers
     await aiAppInstance.loadApiKeysFromSecureStorage();
-    
+
     backendInitialized = true;
     console.log('AI Backend initialized successfully');
     return true;
@@ -89,14 +89,14 @@ async function runHealthCheck(): Promise<HealthCheckResult> {
   try {
     // Check Electron ready
     result.checks.electronReady = app.isReady();
-    
+
     // Initialize backend
     const backendSuccess = await initBackend();
     result.checks.backendInit = backendSuccess;
-    
+
     // Check IPC is ready (backend registers handlers)
     result.checks.ipcReady = backendSuccess && aiAppInstance !== null;
-    
+
     // Check storage functionality
     if (aiAppInstance) {
       try {
@@ -114,7 +114,7 @@ async function runHealthCheck(): Promise<HealthCheckResult> {
           testPassed: false,
         };
       }
-      
+
       // Check provider registration
       try {
         const providers = aiAppInstance.getProviders();
@@ -133,16 +133,16 @@ async function runHealthCheck(): Promise<HealthCheckResult> {
         };
       }
     }
-    
+
     // Cleanup
     if (aiAppInstance) {
       await aiAppInstance.destroy(ipcMain);
     }
-    
+
     // Determine overall status
     const allPassed = Object.values(result.checks).every(v => v === true);
     result.status = allPassed ? 'ok' : 'error';
-    
+
     return result;
   } catch (error) {
     result.error = error instanceof Error ? error.message : String(error);
@@ -208,7 +208,7 @@ ipcMain.handle('app:getPlatform', () => {
 });
 
 ipcMain.handle('app:getPath', (_, name: string) => {
-  return app.getPath(name as any);
+  return app.getPath(name as Parameters<typeof app.getPath>[0]);
 });
 
 // Health check IPC handler
@@ -250,13 +250,13 @@ ipcMain.handle('system:getVersionInfo', () => {
 ipcMain.handle('system:getHealthStatus', async () => {
   const providers = aiAppInstance?.getProviders() || [];
   let storedProviders: string[] = [];
-  
+
   try {
     storedProviders = aiAppInstance ? await aiAppInstance.listStoredKeyProviders() : [];
   } catch {
     // Ignore errors
   }
-  
+
   return {
     initialized: backendInitialized,
     storage: backendInitialized ? {
@@ -274,7 +274,7 @@ if (isHealthCheck) {
     console.log('Running health check...');
     const result = await runHealthCheck();
     console.log('Health Check Results:', JSON.stringify(result, null, 2));
-    
+
     if (result.status === 'ok') {
       console.log('✅ HEALTH_CHECK_PASSED');
       app.exit(0);

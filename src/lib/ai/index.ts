@@ -114,14 +114,32 @@ export {
   createLoggingMiddleware,
   createPerformanceMiddleware,
   createRetryMiddleware,
+  createStructuredLoggingMiddleware,
   generateRequestId,
   type AIMiddleware,
   type MiddlewareContext,
+  type StructuredLogEntry,
+  type StructuredLoggingConfig,
 } from './middleware';
+
+// 断路器
+export {
+  CircuitBreaker,
+  CircuitBreakerManager,
+  createCircuitBreakerMiddleware,
+  createRetryWithBackoffMiddleware,
+  getCircuitBreakerManager,
+  setCircuitBreakerManager,
+  type CircuitState,
+  type CircuitBreakerConfig,
+  type CircuitBreakerStats,
+  type RetryWithBackoffConfig,
+} from './circuit-breaker';
 
 // 缓存
 export {
   MemoryCache,
+  LRUCache,
   LocalStorageCache,
   createCache,
   defaultCacheKeyGenerator,

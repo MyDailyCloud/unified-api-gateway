@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  HardDrive, 
-  MessageSquare, 
-  Trash2, 
-  Download, 
+import {
+  HardDrive,
+  MessageSquare,
+  Trash2,
+  Download,
   RefreshCw,
   Loader2,
   Database
@@ -23,7 +23,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-const electron = window.electron as any;
+// Access electron API with proper typing
+const electron = window.electron;
 
 interface StorageStats {
   conversations: number;
@@ -52,7 +53,7 @@ export function StorageManager() {
 
   const loadData = async () => {
     setLoading(true);
-    
+
     if (electron?.storage) {
       try {
         const [statsResult, convsResult] = await Promise.all([
@@ -67,13 +68,13 @@ export function StorageManager() {
     } else {
       setStats({ conversations: 0, messages: 0, cacheSize: 0 });
     }
-    
+
     setLoading(false);
   };
 
   const handleClearCache = async () => {
     if (!electron?.storage) return;
-    
+
     setClearing(true);
     try {
       await electron.storage.clearCache();
@@ -92,7 +93,7 @@ export function StorageManager() {
       toast({ title: 'Not available', description: 'Export requires Electron', variant: 'destructive' });
       return;
     }
-    
+
     setExporting(true);
     try {
       const result = await electron.storage.exportData();

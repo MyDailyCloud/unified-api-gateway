@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type { IpcMessage } from './env';
 
 // Expose protected methods to the renderer process
 contextBridge.exposeInMainWorld('electron', {
@@ -11,7 +12,7 @@ contextBridge.exposeInMainWorld('electron', {
 
   // Platform info
   platform: process.platform,
-  
+
   // System info
   system: {
     getVersionInfo: () => ipcRenderer.invoke('system:getVersionInfo'),
@@ -22,23 +23,23 @@ contextBridge.exposeInMainWorld('electron', {
   // API Keys management
   apiKeys: {
     list: () => ipcRenderer.invoke('apiKeys:list'),
-    set: (provider: string, apiKey: string) => 
+    set: (provider: string, apiKey: string) =>
       ipcRenderer.invoke('apiKeys:set', { provider, apiKey }),
-    delete: (provider: string) => 
+    delete: (provider: string) =>
       ipcRenderer.invoke('apiKeys:delete', { provider }),
-    validate: (provider: string) => 
+    validate: (provider: string) =>
       ipcRenderer.invoke('apiKeys:validate', { provider }),
-    hasKey: (provider: string) => 
+    hasKey: (provider: string) =>
       ipcRenderer.invoke('apiKeys:get', { provider }),
   },
 
   // Chat with streaming support
   chat: {
-    send: (params: { provider: string; model: string; messages: any[]; conversationId?: string }) => 
+    send: (params: { provider: string; model: string; messages: IpcMessage[]; conversationId?: string }) =>
       ipcRenderer.invoke('chat:send', params),
-    stream: (params: { provider: string; model: string; messages: any[]; conversationId?: string }) => 
+    stream: (params: { provider: string; model: string; messages: IpcMessage[]; conversationId?: string }) =>
       ipcRenderer.invoke('chat:stream', params),
-    cancelStream: (streamId: string) => 
+    cancelStream: (streamId: string) =>
       ipcRenderer.invoke('chat:cancelStream', streamId),
   },
 
@@ -56,23 +57,23 @@ contextBridge.exposeInMainWorld('electron', {
     clearCache: () => ipcRenderer.invoke('storage:clearCache'),
     exportData: () => ipcRenderer.invoke('storage:exportData'),
   },
-  
+
   // IPC communication
   ipc: {
-    send: (channel: string, ...args: any[]) => {
+    send: (channel: string, ...args: unknown[]) => {
       ipcRenderer.send(channel, ...args);
     },
-    invoke: (channel: string, ...args: any[]) => {
+    invoke: <T = unknown>(channel: string, ...args: unknown[]): Promise<T> => {
       return ipcRenderer.invoke(channel, ...args);
     },
-    on: (channel: string, callback: (...args: any[]) => void) => {
+    on: (channel: string, callback: (...args: unknown[]) => void) => {
       ipcRenderer.on(channel, (_event, ...args) => callback(...args));
     },
-    once: (channel: string, callback: (...args: any[]) => void) => {
+    once: (channel: string, callback: (...args: unknown[]) => void) => {
       ipcRenderer.once(channel, (_event, ...args) => callback(...args));
     },
-    removeListener: (channel: string, callback: (...args: any[]) => void) => {
-      ipcRenderer.removeListener(channel, callback);
+    removeListener: (channel: string, callback: (...args: unknown[]) => void) => {
+      ipcRenderer.removeListener(channel, callback as Parameters<typeof ipcRenderer.removeListener>[1]);
     },
     removeAllListeners: (channel: string) => {
       ipcRenderer.removeAllListeners(channel);
@@ -82,3 +83,4 @@ contextBridge.exposeInMainWorld('electron', {
 
 // Notify that preload script has loaded
 console.log('Preload script loaded');
+

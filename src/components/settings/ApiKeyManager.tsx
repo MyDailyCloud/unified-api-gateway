@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { ProviderCard } from './ProviderCard';
 import { ApiKeyConfigDialog } from './ApiKeyConfigDialog';
-import { 
-  PROVIDER_METADATA, 
+import {
+  PROVIDER_METADATA,
   PROVIDER_CATEGORIES,
   getProvidersByCategory,
   type ProviderMetadata,
@@ -20,8 +20,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-// Type helper for electron API
-const electron = window.electron as any;
+// Access electron API with proper typing from env.d.ts
+const electron = window.electron;
 
 interface ProviderStatus {
   hasKey: boolean;
@@ -52,7 +52,7 @@ export function ApiKeyManager() {
     try {
       const result = await electron.apiKeys.list();
       const status: Record<string, ProviderStatus> = {};
-      result.providers.forEach((p: any) => {
+      result.providers.forEach((p) => {
         status[p.provider] = {
           hasKey: p.hasKey,
           lastUpdated: p.lastUpdated,
@@ -82,18 +82,18 @@ export function ApiKeyManager() {
     }
 
     const result = await electron.apiKeys.set(selectedProvider.id, apiKey);
-    
+
     if (result.success) {
       toast({
         title: 'API Key saved',
         description: `${selectedProvider.name} API key has been securely stored.`,
       });
-      
+
       setProviderStatus((prev) => ({
         ...prev,
         [selectedProvider.id]: { hasKey: true, lastUpdated: Date.now() },
       }));
-      
+
       handleValidate(selectedProvider.id);
     } else {
       throw new Error(result.error || 'Failed to save API key');
@@ -109,13 +109,13 @@ export function ApiKeyManager() {
     if (!providerToDelete || !electron?.apiKeys) return;
 
     const result = await electron.apiKeys.delete(providerToDelete);
-    
+
     if (result.success) {
       toast({
         title: 'API Key deleted',
         description: `${PROVIDER_METADATA[providerToDelete]?.name || providerToDelete} API key has been removed.`,
       });
-      
+
       setProviderStatus((prev) => {
         const newStatus = { ...prev };
         delete newStatus[providerToDelete];
@@ -128,7 +128,7 @@ export function ApiKeyManager() {
         variant: 'destructive',
       });
     }
-    
+
     setDeleteDialogOpen(false);
     setProviderToDelete(null);
   };
@@ -137,10 +137,10 @@ export function ApiKeyManager() {
     if (!electron?.apiKeys) return;
 
     setValidatingProvider(providerId);
-    
+
     try {
       const result = await electron.apiKeys.validate(providerId);
-      
+
       setProviderStatus((prev) => ({
         ...prev,
         [providerId]: {
@@ -179,14 +179,14 @@ export function ApiKeyManager() {
       {categories.map((category) => {
         const providers = getProvidersByCategory(category);
         const categoryInfo = PROVIDER_CATEGORIES[category];
-        
+
         return (
           <div key={category} className="space-y-4">
             <div>
               <h2 className="text-lg font-semibold text-foreground">{categoryInfo.name}</h2>
               <p className="text-sm text-muted-foreground">{categoryInfo.description}</p>
             </div>
-            
+
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {providers.map((provider) => {
                 const status = providerStatus[provider.id];

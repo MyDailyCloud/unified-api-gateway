@@ -157,6 +157,122 @@ export class MemoryCache implements AICache {
   }
 }
 
+// ==================== LRU 缓存实现 ====================
+
+/**
+ * LRU (Least Recently Used) 缓存
+ * 淘汰最久未使用的条目
+ */
+export class LRUCache implements AICache {
+  private cache = new Map<string, CacheEntry<ChatCompletionResponse>>();
+  private stats = { hits: 0, misses: 0 };
+  private config: CacheConfig;
+
+  constructor(config: Partial<CacheConfig> = {}) {
+    this.config = {
+      enabled: true,
+      ttl: 5 * 60 * 1000,
+      maxSize: 100,
+      ...config,
+    };
+  }
+
+  async get(key: string): Promise<ChatCompletionResponse | null> {
+    if (!this.config.enabled) return null;
+
+    const entry = this.cache.get(key);
+    if (!entry) {
+      this.stats.misses++;
+      return null;
+    }
+
+    if (Date.now() > entry.expiresAt) {
+      this.cache.delete(key);
+      this.stats.misses++;
+      return null;
+    }
+
+    // LRU: 移动到末尾（最近使用）
+    this.cache.delete(key);
+    this.cache.set(key, { ...entry, hits: entry.hits + 1 });
+
+    this.stats.hits++;
+    return entry.value;
+  }
+
+  async set(key: string, value: ChatCompletionResponse, ttl?: number): Promise<void> {
+    if (!this.config.enabled) return;
+
+    // 如果键已存在，先删除（确保移动到末尾）
+    if (this.cache.has(key)) {
+      this.cache.delete(key);
+    }
+
+    // 检查容量，如果满了则删除最久未使用的（Map 的第一个）
+    if (this.cache.size >= this.config.maxSize) {
+      this.evictLRU();
+    }
+
+    const now = Date.now();
+    this.cache.set(key, {
+      value,
+      expiresAt: now + (ttl ?? this.config.ttl),
+      createdAt: now,
+      hits: 0,
+    });
+  }
+
+  async delete(key: string): Promise<boolean> {
+    return this.cache.delete(key);
+  }
+
+  async clear(): Promise<void> {
+    this.cache.clear();
+    this.stats = { hits: 0, misses: 0 };
+  }
+
+  async has(key: string): Promise<boolean> {
+    const entry = this.cache.get(key);
+    if (!entry) return false;
+    if (Date.now() > entry.expiresAt) {
+      this.cache.delete(key);
+      return false;
+    }
+    return true;
+  }
+
+  getStats(): CacheStats {
+    const total = this.stats.hits + this.stats.misses;
+    return {
+      ...this.stats,
+      size: this.cache.size,
+      hitRate: total > 0 ? this.stats.hits / total : 0,
+    };
+  }
+
+  /**
+   * 淘汰最久未使用的条目（Map 的第一个）
+   */
+  private evictLRU(): void {
+    const firstKey = this.cache.keys().next().value;
+    if (firstKey !== undefined) {
+      this.cache.delete(firstKey);
+    }
+  }
+
+  /**
+   * 清理过期条目
+   */
+  cleanup(): void {
+    const now = Date.now();
+    for (const [key, entry] of this.cache) {
+      if (now > entry.expiresAt) {
+        this.cache.delete(key);
+      }
+    }
+  }
+}
+
 // ==================== LocalStorage 缓存实现 ====================
 
 export class LocalStorageCache implements AICache {
@@ -229,7 +345,7 @@ export class LocalStorageCache implements AICache {
 
   async clear(): Promise<void> {
     if (typeof localStorage === 'undefined') return;
-    
+
     const keysToRemove: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
@@ -265,7 +381,7 @@ export class LocalStorageCache implements AICache {
 
   cleanup(): void {
     if (typeof localStorage === 'undefined') return;
-    
+
     const now = Date.now();
     for (let i = localStorage.length - 1; i >= 0; i--) {
       const key = localStorage.key(i);
@@ -302,7 +418,7 @@ export function defaultCacheKeyGenerator(request: ChatCompletionRequest): string
     max_tokens: request.max_tokens,
     tools: request.tools?.map(t => t.function.name),
   };
-  
+
   return hashString(JSON.stringify(keyData));
 }
 
@@ -323,7 +439,7 @@ function hashString(str: string): string {
 
 export function createCache(config?: Partial<CacheConfig>): AICache {
   const storage = config?.storage ?? 'memory';
-  
+
   switch (storage) {
     case 'localStorage':
       return new LocalStorageCache(config);
